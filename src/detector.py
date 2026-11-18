@@ -919,16 +919,30 @@ class SurfaceDetector:
 
         # Deduplicate candidates with high spatial overlap (prevent duplicate boxes on same surface)
         if len(candidates) > 1:
+            candidates.sort(key=lambda c: c.confidence, reverse=True)
             deduped: List[CandidateDetection] = []
             for cand in candidates:
                 keep = True
                 c_cx = float(np.mean(cand.quad[:, 0]))
                 c_cy = float(np.mean(cand.quad[:, 1]))
+                cb = cand.bbox
+                c_area = max(1, (cb[2] - cb[0]) * (cb[3] - cb[1]))
                 for existing in deduped:
                     e_cx = float(np.mean(existing.quad[:, 0]))
                     e_cy = float(np.mean(existing.quad[:, 1]))
                     dist = math.hypot(c_cx - e_cx, c_cy - e_cy)
-                    if dist < 40.0:
+                    eb = existing.bbox
+                    e_area = max(1, (eb[2] - eb[0]) * (eb[3] - eb[1]))
+
+                    ix1, iy1 = max(cb[0], eb[0]), max(cb[1], eb[1])
+                    ix2, iy2 = min(cb[2], eb[2]), min(cb[3], eb[3])
+                    iw = max(0, ix2 - ix1)
+                    ih = max(0, iy2 - iy1)
+                    inter = iw * ih
+                    iou = inter / float(c_area + e_area - inter) if (c_area + e_area - inter) > 0 else 0.0
+                    overlap = inter / float(min(c_area, e_area)) if min(c_area, e_area) > 0 else 0.0
+
+                    if dist < 50.0 or iou > 0.30 or overlap > 0.45:
                         keep = False
                         break
                 if keep:
