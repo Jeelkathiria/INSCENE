@@ -301,6 +301,8 @@ class TrackletScore:
             "raw_end_time_sec": round(self.end_time, 2),
             "duration_sec": round(max(0.1, self.slot_end_time - self.slot_start_time), 2),
             "total_frames": self.total_frames,
+            "dimensions_wh": f"{round(self.mean_area_fraction * 100, 1)}% area",
+            "position_xy": f"Track #{self.track_id}",
             "timeline_slot_str": self.timeline_str,
             "is_sequential_slot": self.is_sequential_slot,
             "final_score": round(self.final_score, 1),

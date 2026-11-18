@@ -32,9 +32,9 @@ class DetectorConfig:
     """Parameters for candidate surface and occluder detection."""
     model_name: str = "yolov8s-worldv2.pt"
     fallback_model: str = "yolov8n.pt"
-    conf_threshold: float = 0.18        # Sensitive enough for distant/angled ad planes
+    conf_threshold: float = 0.10        # Sensitive enough for distant/angled ad planes and street banners
     iou_threshold: float = 0.45
-    inference_imgsz: int = 480          # Fast inference resolution (speeds up CPU by 3x)
+    inference_imgsz: int = 640          # High resolution for fine billboard boundaries & facade detection
     frame_stride: int = 3               # Process every 3rd frame (speeds up video by 3x)
 
     # Open-vocabulary prompts for candidate planar surfaces & transit ad vehicles
@@ -45,19 +45,46 @@ class DetectorConfig:
         "poster",
         "display screen",
         "banner",
-        "bus",
-        "truck",
-        "car",
-        "sports car",
-        "side of car",
-        "car door",
-        "side of truck",
+        "wall billboard",
+        "building billboard",
+        "large billboard",
+        "digital billboard",
+        "overhead banner",
+        "hanging banner",
+        "street banner",
+        "facade banner",
+        "plain wall",
+        "upper wall",
+        "wall without window",
+        "brick wall",
+        "gable",
         "side of bus",
+        "exterior city bus",
+        "advertisement poster",
+        "framed poster",
+        "transit ad poster",
+        "train poster",
+        "subway poster",
+        "metro ad poster",
+        "carriage poster",
+        "interior billboard",
+        "truck",
+        "side of truck",
+        "skyscraper facade",
+        "high-rise facade",
         "building facade",
+        "commercial building facade",
+        "office building facade",
+        "flat building wall",
+        "building wall",
         "wall",
         "storefront",
         "shop sign",
         "blank wall",
+        "concrete bridge wall",
+        "overhead bridge girder",
+        "bridge girder",
+        "bridge wall",
         "whiteboard"
     ])
 
@@ -65,11 +92,18 @@ class DetectorConfig:
     occluder_classes: List[str] = field(default_factory=lambda: [
         "person",
         "pedestrian",
+        "car",
+        "automobile",
         "pole",
         "lamp post",
+        "street lamp",
         "traffic sign",
         "tree branch",
-        "umbrella"
+        "umbrella",
+        "window",
+        "handrail",
+        "grab handle",
+        "train seat"
     ])
 
     # Fallback standard COCO mappings when using base YOLO models
@@ -84,7 +118,7 @@ class DetectorConfig:
 @dataclass
 class GeometryConfig:
     """Thresholds for 4-point quadrilateral verification."""
-    min_area_fraction: float = 0.015    # Min candidate area (1.5% of total frame area)
+    min_area_fraction: float = 0.005    # Min candidate area (0.5% of total frame area)
     max_area_fraction: float = 0.75     # Max candidate area (75% of total frame area)
     min_internal_angle_deg: float = 30.0  # Reject hyper-acute perspective angles
     max_internal_angle_deg: float = 150.0

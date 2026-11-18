@@ -43,11 +43,13 @@ class SurfaceDetector:
     """
     _cached_model = None
     _cached_model_type = None
+    _cached_classes = None
 
     def __init__(self, det_cfg: DetectorConfig, geom_cfg: GeometryConfig):
         self.det_cfg = det_cfg
         self.geom_cfg = geom_cfg
-        if SurfaceDetector._cached_model is not None:
+        all_classes = self.det_cfg.candidate_classes + self.det_cfg.occluder_classes
+        if SurfaceDetector._cached_model is not None and SurfaceDetector._cached_classes == all_classes:
             self.model = SurfaceDetector._cached_model
             self.model_type = SurfaceDetector._cached_model_type
         else:
@@ -69,6 +71,7 @@ class SurfaceDetector:
                 self.model_type = "yolo_world"
                 SurfaceDetector._cached_model = self.model
                 SurfaceDetector._cached_model_type = self.model_type
+                SurfaceDetector._cached_classes = all_classes
                 logger.info("YOLOv8-World loaded with %d custom classes.", len(all_classes))
                 return
             except Exception as e:
@@ -165,6 +168,406 @@ class SurfaceDetector:
 
         return default_quad
 
+    def fit_bridge_3d_quad(
+        self,
+        frame: np.ndarray,
+        bbox: Tuple[int, int, int, int]
+    ) -> np.ndarray:
+        """
+        Fits a perspective 3D planar quadrilateral conforming to the architectural
+        girder slope and vanishing perspective of a bridge wall / overpass beam.
+        """
+        h, w = frame.shape[:2]
+        x1, y1, x2, y2 = bbox
+        bw = x2 - x1
+        bh = y2 - y1
+
+        crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
+        if crop.size == 0 or bw < 40 or bh < 20:
+            return order_points(np.array([
+                [x1, y1], [x2, y1], [x2, y2], [x1, y2]
+            ], dtype=np.float32))
+
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(blurred, 35, 130)
+
+        min_len = max(30, int(bw * 0.10))
+        lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=45, minLineLength=min_len, maxLineGap=25)
+
+        if lines is not None and len(lines) >= 3:
+            filtered_lines = []
+            gx_mid = (x1 + x2) * 0.5
+            for line in lines:
+                lx1, ly1, lx2, ly2 = line[0]
+                dx = lx2 - lx1
+                dy = ly2 - ly1
+                if abs(dx) < 15:
+                    continue
+                slope = dy / float(dx)
+                if abs(slope) > 0.85:
+                    continue
+                glx1 = x1 + lx1
+                gly1 = y1 + ly1
+                glx2 = x1 + lx2
+                gly2 = y1 + ly2
+                gy_mid = ((gly1 + gly2) * 0.5) + slope * (gx_mid - (glx1 + glx2) * 0.5)
+                length = np.hypot(dx, dy)
+                filtered_lines.append((slope, gy_mid, length))
+
+            if len(filtered_lines) >= 3:
+                slopes = [f[0] for f in filtered_lines]
+                median_slope = float(np.median(slopes))
+                consistent_lines = [f for f in filtered_lines if abs(f[0] - median_slope) <= 0.15]
+                if len(consistent_lines) >= 2:
+                    ymids = [f[1] for f in consistent_lines]
+                    min_ym = float(np.min(ymids))
+                    max_ym = float(np.max(ymids))
+                    span_ym = max_ym - min_ym
+
+                    if span_ym >= bh * 0.25:
+                        top_group = [f for f in consistent_lines if f[1] <= min_ym + span_ym * 0.35]
+                        bot_group = [f for f in consistent_lines if f[1] >= max_ym - span_ym * 0.35]
+
+                        if top_group and bot_group:
+                            w_top = [f[2] for f in top_group]
+                            slope_top = float(np.average([f[0] for f in top_group], weights=w_top))
+                            ym_top = float(np.average([f[1] for f in top_group], weights=w_top))
+
+                            w_bot = [f[2] for f in bot_group]
+                            slope_bot = float(np.average([f[0] for f in bot_group], weights=w_bot))
+                            ym_bot = float(np.average([f[1] for f in bot_group], weights=w_bot))
+
+                            mx1 = float(max(4, x1 + int(bw * 0.02)))
+                            mx2 = float(min(w - 4, x2 - int(bw * 0.02)))
+
+                            p1_y = float(ym_top + slope_top * (mx1 - gx_mid))
+                            p2_y = float(ym_top + slope_top * (mx2 - gx_mid))
+                            p3_y = float(ym_bot + slope_bot * (mx2 - gx_mid))
+                            p4_y = float(ym_bot + slope_bot * (mx1 - gx_mid))
+
+                            p1_y = float(max(2, min(h - 2, p1_y)))
+                            p2_y = float(max(2, min(h - 2, p2_y)))
+                            p3_y = float(max(2, min(h - 2, p3_y)))
+                            p4_y = float(max(2, min(h - 2, p4_y)))
+
+                            quad = order_points(np.array([
+                                [mx1, p1_y],
+                                [mx2, p2_y],
+                                [mx2, p3_y],
+                                [mx1, p4_y]
+                            ], dtype=np.float32))
+
+                            return quad
+
+        return order_points(np.array([
+            [x1 + 0.02 * bw, y1 + 0.05 * bh],
+            [x2 - 0.02 * bw, y1 + 0.05 * bh],
+            [x2 - 0.02 * bw, y2 - 0.05 * bh],
+            [x1 + 0.02 * bw, y2 - 0.05 * bh]
+        ], dtype=np.float32))
+
+    def fit_billboard_banner_3d_quad(
+        self,
+        frame: np.ndarray,
+        bbox: Tuple[int, int, int, int]
+    ) -> np.ndarray:
+        """
+        Fits a true 3D perspective quadrilateral point-to-point for billboards,
+        framed posters, and wall banners in both outdoor street canyons and transit interiors.
+        """
+        fh, fw = frame.shape[:2]
+        x1, y1, x2, y2 = bbox
+        bw = x2 - x1
+        bh = y2 - y1
+
+        default_quad = order_points(np.array([
+            [x1, y1], [x2, y1], [x2, y2], [x1, y2]
+        ], dtype=np.float32))
+
+        if bw < 20 or bh < 20:
+            return default_quad
+
+        crop = frame[max(0, y1):min(fh, y2), max(0, x1):min(fw, x2)]
+        if crop.size == 0:
+            return default_quad
+
+        try:
+            gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+            edges = cv2.Canny(blurred, 30, 115)
+
+            # 1. Point-to-point outer boundary line solver
+            min_len = max(16, int(min(bw, bh) * 0.12))
+            lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=18, minLineLength=min_len, maxLineGap=12)
+
+            if lines is not None and len(lines) >= 3:
+                v_lines = []
+                h_lines = []
+                for l in lines:
+                    lx1, ly1, lx2, ly2 = l[0]
+                    dx = lx2 - lx1
+                    dy = ly2 - ly1
+                    length = np.hypot(dx, dy)
+                    if abs(dx) < 18 or abs(dy) > abs(dx) * 1.5:
+                        v_lines.append((lx1, ly1, lx2, ly2, (lx1 + lx2) * 0.5, length))
+                    elif abs(dy) < abs(dx) * 0.65:
+                        h_lines.append((lx1, ly1, lx2, ly2, (ly1 + ly2) * 0.5, length))
+
+                if v_lines and h_lines:
+                    v_lines.sort(key=lambda l: l[4])
+                    h_lines.sort(key=lambda l: l[4])
+
+                    outer_left = [l for l in v_lines if l[4] <= bw * 0.28]
+                    outer_right = [l for l in v_lines if l[4] >= bw * 0.72]
+                    outer_top = [l for l in h_lines if l[4] <= bh * 0.28]
+                    outer_bot = [l for l in h_lines if l[4] >= bh * 0.72]
+
+                    if outer_left and outer_right and outer_top and outer_bot:
+                        def fit_cluster(cluster, is_v):
+                            pts = []
+                            for l in cluster:
+                                pts.extend([[l[0], l[1]], [l[2], l[3]]])
+                            pts = np.array(pts, dtype=np.float32)
+                            if is_v:
+                                y, x = pts[:, 1], pts[:, 0]
+                                if len(y) >= 2 and (np.max(y) - np.min(y)) > 15:
+                                    m, c = np.polyfit(y, x, 1)
+                                    return float(m), float(c)
+                                return 0.0, float(np.median(x))
+                            else:
+                                x, y = pts[:, 0], pts[:, 1]
+                                if len(x) >= 2 and (np.max(x) - np.min(x)) > 15:
+                                    m, c = np.polyfit(x, y, 1)
+                                    return float(m), float(c)
+                                return 0.0, float(np.median(y))
+
+                        lt = fit_cluster(outer_top, False)
+                        lb = fit_cluster(outer_bot, False)
+                        ll = fit_cluster(outer_left, True)
+                        lr = fit_cluster(outer_right, True)
+
+                        def intersect(lh, lv):
+                            mh, ch = lh
+                            mv, cv = lv
+                            denom = 1.0 - mh * mv
+                            if abs(denom) < 1e-4:
+                                denom = 1e-4
+                            iy = (mh * cv + ch) / denom
+                            ix = mv * iy + cv
+                            return float(ix), float(iy)
+
+                        c1 = intersect(lt, ll)
+                        c2 = intersect(lt, lr)
+                        c3 = intersect(lb, lr)
+                        c4 = intersect(lb, ll)
+
+                        p1 = [float(np.clip(x1 + c1[0], 1, fw - 2)), float(np.clip(y1 + c1[1], 1, fh - 2))]
+                        p2 = [float(np.clip(x1 + c2[0], 1, fw - 2)), float(np.clip(y1 + c2[1], 1, fh - 2))]
+                        p3 = [float(np.clip(x1 + c3[0], 1, fw - 2)), float(np.clip(y1 + c3[1], 1, fh - 2))]
+                        p4 = [float(np.clip(x1 + c4[0], 1, fw - 2)), float(np.clip(y1 + c4[1], 1, fh - 2))]
+
+                        p2p_quad = order_points(np.array([p1, p2, p3, p4], dtype=np.float32))
+                        valid, _ = is_valid_planar_quad(
+                            p2p_quad, fw, fh,
+                            min_area_fraction=self.geom_cfg.min_area_fraction * 0.5,
+                            max_area_fraction=self.geom_cfg.max_area_fraction
+                        )
+                        if valid:
+                            return p2p_quad
+
+            # 2. Independent Top & Bottom Slopes with Perspective Vanishing Ray Fallback
+            vp_x = fw * 0.50
+            vp_y = fh * 0.58
+            box_cx = (x1 + x2) * 0.5
+            box_cy = (y1 + y2) * 0.5
+
+            expected_slope_sign = 1.0 if box_cx < vp_x else -1.0
+            dx_to_vp = vp_x - box_cx
+            dy_to_vp = vp_y - box_cy
+            ray_slope = dy_to_vp / float(dx_to_vp) if abs(dx_to_vp) > 10 else 0.0
+
+            # Derive top and bottom slopes independently
+            top_slopes = []
+            bot_slopes = []
+            v_slopes = []
+            if lines is not None:
+                for line in lines:
+                    lx1, ly1, lx2, ly2 = line[0]
+                    dx = lx2 - lx1
+                    dy = ly2 - ly1
+                    length = np.hypot(dx, dy)
+                    y_mid = (ly1 + ly2) * 0.5
+                    if abs(dx) >= 12 and abs(dy) <= abs(dx) * 0.85:
+                        slope = dy / float(dx)
+                        if y_mid < bh * 0.45:
+                            top_slopes.append((slope, length))
+                        elif y_mid > bh * 0.55:
+                            bot_slopes.append((slope, length))
+                    elif abs(dx) < 14 or abs(dy) > abs(dx) * 1.2:
+                        v_slopes.append(dx / float(dy) if dy != 0 else 0.0)
+
+            if top_slopes:
+                weights = [t[1] for t in top_slopes]
+                m_top = float(np.average([t[0] for t in top_slopes], weights=weights))
+            else:
+                dy_top = vp_y - y1
+                m_top = float(np.clip(dy_top / float(dx_to_vp) if abs(dx_to_vp) > 10 else ray_slope, -0.65, 0.65))
+
+            if bot_slopes:
+                weights = [b[1] for b in bot_slopes]
+                m_bot = float(np.average([b[0] for b in bot_slopes], weights=weights))
+            else:
+                dy_bot = vp_y - y2
+                m_bot = float(np.clip(dy_bot / float(dx_to_vp) if abs(dx_to_vp) > 10 else ray_slope, -0.65, 0.65))
+
+            if v_slopes:
+                v_inv = float(np.median(v_slopes))
+                v_inv = float(np.clip(v_inv, -0.18, 0.18))
+            else:
+                v_inv = 0.025 if box_cx < vp_x else -0.025
+
+            # Overhead central banner dampening
+            if abs(box_cx - vp_x) < 0.15 * fw and (bw / max(1, bh)) > 1.2:
+                m_top = float(np.clip(m_top, -0.06, 0.06))
+                m_bot = float(np.clip(m_bot, -0.06, 0.06))
+                v_inv = 0.0
+
+            gx_mid = box_cx
+            gy_mid = box_cy
+            half_w = bw * 0.5 * 0.98
+            half_h = bh * 0.5 * 0.98
+
+            p1_x = (gx_mid - half_w) - half_h * v_inv
+            p1_y = (gy_mid - half_h) + m_top * (p1_x - gx_mid)
+
+            p2_x = (gx_mid + half_w) - half_h * v_inv
+            p2_y = (gy_mid - half_h) + m_top * (p2_x - gx_mid)
+
+            p3_x = (gx_mid + half_w) + half_h * v_inv
+            p3_y = (gy_mid + half_h) + m_bot * (p3_x - gx_mid)
+
+            p4_x = (gx_mid - half_w) + half_h * v_inv
+            p4_y = (gy_mid + half_h) + m_bot * (p4_x - gx_mid)
+
+            pts = np.array([
+                [np.clip(p1_x, 1, fw - 2), np.clip(p1_y, 1, fh - 2)],
+                [np.clip(p2_x, 1, fw - 2), np.clip(p2_y, 1, fh - 2)],
+                [np.clip(p3_x, 1, fw - 2), np.clip(p3_y, 1, fh - 2)],
+                [np.clip(p4_x, 1, fw - 2), np.clip(p4_y, 1, fh - 2)]
+            ], dtype=np.float32)
+
+            quad = order_points(pts)
+            valid, _ = is_valid_planar_quad(
+                quad, fw, fh,
+                min_area_fraction=self.geom_cfg.min_area_fraction,
+                max_area_fraction=self.geom_cfg.max_area_fraction,
+                min_angle=self.geom_cfg.min_internal_angle_deg,
+                max_angle=self.geom_cfg.max_internal_angle_deg
+            )
+            if valid:
+                return quad
+        except Exception:
+            pass
+
+        return default_quad
+
+    def fit_upper_wall_plain_quad(
+        self,
+        frame: np.ndarray,
+        facade_bbox: Tuple[int, int, int, int],
+        window_bboxes: List[Tuple[int, int, int, int]]
+    ) -> Optional[np.ndarray]:
+        """
+        Detects and fits the optimal plain wall advertisement surface above windows
+        on a building facade, excluding window panes and conforming to upward keystone perspective.
+        """
+        fh, fw = frame.shape[:2]
+        fx1, fy1, fx2, fy2 = facade_bbox
+        fbw = fx2 - fx1
+        fbh = fy2 - fy1
+
+        # Collect windows inside or intersecting this facade
+        contained_windows = []
+        for wb in window_bboxes:
+            wx1, wy1, wx2, wy2 = wb
+            if wx2 > fx1 + 10 and wx1 < fx2 - 10 and wy2 > fy1 and wy1 < fy2:
+                contained_windows.append(wb)
+
+        if not contained_windows:
+            return None
+
+        # Minimum top y among windows
+        min_win_y = min(wb[1] for wb in contained_windows)
+        upper_h = min_win_y - fy1
+
+        if upper_h < 35 or upper_h < (fbh * 0.10):
+            return None
+
+        margin_bottom = max(6, int(upper_h * 0.06))
+        bot_y = float(min_win_y - margin_bottom)
+        top_y = float(fy1 + int(upper_h * 0.15))
+
+        crop_upper = frame[max(0, fy1):int(bot_y), max(0, fx1):min(fw, fx2)]
+        win_min_x = min(wb[0] for wb in contained_windows)
+        win_max_x = max(wb[2] for wb in contained_windows)
+
+        left_x = float(max(fx1 + 15, win_min_x - 15))
+        right_x = float(min(fx2 - 15, win_max_x + 15))
+
+        if fbw > 200 and crop_upper.size > 0:
+            lab = cv2.cvtColor(crop_upper, cv2.COLOR_BGR2Lab)
+            a_channel = lab[:, :, 1]
+            is_brick = (a_channel > 132)
+            col_counts = np.sum(is_brick, axis=0)
+            valid_cols = np.where(col_counts > (crop_upper.shape[0] * 0.35))[0]
+            if len(valid_cols) > 40:
+                left_x = float(fx1 + valid_cols[0] + 5)
+                right_x = float(fx1 + valid_cols[-1] - 5)
+
+        span_w = right_x - left_x
+        delta_x = span_w * 0.025
+
+        p1 = [left_x + delta_x, top_y]
+        p2 = [right_x - delta_x, top_y]
+        p3 = [right_x, bot_y]
+        p4 = [left_x, bot_y]
+
+        quad = order_points(np.array([p1, p2, p3, p4], dtype=np.float32))
+        valid, _ = is_valid_planar_quad(
+            quad, fw, fh,
+            min_area_fraction=self.geom_cfg.min_area_fraction,
+            max_area_fraction=self.geom_cfg.max_area_fraction,
+            min_angle=self.geom_cfg.min_internal_angle_deg,
+            max_angle=self.geom_cfg.max_internal_angle_deg
+        )
+        if valid:
+            return quad
+        return None
+
+    @staticmethod
+    def is_window_grid_facade(crop: np.ndarray, strict: bool = False) -> bool:
+        """
+        Determines whether a building facade crop is covered in a dense repeating
+        window grid / aperture lattice (such as residential apartment blocks) with no plain ad surface.
+        """
+        if crop is None or crop.size == 0 or crop.shape[0] < 12 or crop.shape[1] < 12:
+            return False
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        sobel_x = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
+        col_energy = np.mean(sobel_x, axis=0)
+        col_mean = float(np.mean(sobel_x))
+        col_std = float(np.std(col_energy))
+
+        # Strict check for low-confidence detections or window clutter
+        if strict and (col_mean > 50.0 or col_std > 24.0):
+            return True
+
+        # Dense repeating vertical window aperture columns (e.g. apartment towers)
+        if col_mean > 58.0 and col_std > 28.0:
+            return True
+        return False
+
     def detect_classical(self, frame: np.ndarray) -> Tuple[List[CandidateDetection], List[OccluderDetection]]:
         """
         Model-free classical detection: uses bilateral filtering, adaptive Canny edge detection,
@@ -258,6 +661,21 @@ class SurfaceDetector:
             c_cand, c_occ = self.detect_classical(frame)
             return c_cand, occluders + c_occ
 
+        # Pre-scan for window boxes and interior cues
+        window_boxes: List[Tuple[int, int, int, int]] = []
+        detected_names = [names.get(int(box.cls[0].item()), "").lower() for box in boxes]
+        is_interior_scene = any(
+            k in d_name for d_name in detected_names
+            for k in ["handrail", "grab handle", "train seat", "train interior", "subway", "carriage", "metro", "seat", "interior"]
+        )
+
+        for box in boxes:
+            cls_id = int(box.cls[0].item())
+            b_name = names.get(cls_id, str(cls_id)).lower()
+            if "window" in b_name:
+                wxyxy = box.xyxy[0].cpu().numpy().astype(int)
+                window_boxes.append((int(wxyxy[0]), int(wxyxy[1]), int(wxyxy[2]), int(wxyxy[3])))
+
         for box in boxes:
             cls_id = int(box.cls[0].item())
             conf = float(box.conf[0].item())
@@ -269,9 +687,9 @@ class SurfaceDetector:
             bh = y2 - y1
             aspect = bw / max(1, bh)
 
-            # Special Transit & Automotive Advertising Handler: Bus, Truck & Car Side Ad Panels
-            if "bus" in cls_name or "truck" in cls_name or "car" in cls_name:
-                if aspect > 1.05:
+            # Special Transit & Automotive Advertising Handler: Bus & Truck Side Ad Panels
+            if ("bus" in cls_name or "truck" in cls_name) and not is_interior_scene:
+                if aspect > 1.05 and conf >= 0.35:
                     if "bus" in cls_name:
                         # Extract the transit ad banner below the window band
                         bus_crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
@@ -368,77 +786,8 @@ class SurfaceDetector:
                                 mask=None
                             ))
                             continue
-                    elif "car" in cls_name and bw >= 110 and bh >= 40:
-                        # Extract the car side door & livery panel (between wheels, below window sill)
-                        car_crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
-                        facing_right = True
-                        if car_crop.size > 0 and car_crop.shape[1] > 20:
-                            gray_car = cv2.cvtColor(car_crop, cv2.COLOR_BGR2GRAY)
-                            top_half = gray_car[:int(bh * 0.5), :]
-                            dark_l = float(np.sum(top_half[:, :int(bw * 0.5)] < 100))
-                            dark_r = float(np.sum(top_half[:, int(bw * 0.5):] < 100))
-                            facing_right = (dark_l >= dark_r)
 
-                        if aspect > 2.8:
-                            # Full side profile (flat elevation)
-                            sx1 = int(x1 + 0.18 * bw)
-                            sx2 = int(x1 + 0.78 * bw)
-                            sy1 = int(y1 + 0.38 * bh)
-                            sy2 = int(y1 + 0.78 * bh)
-                            p1 = [sx1, sy1]
-                            p2 = [sx2, sy1]
-                            p3 = [sx2, sy2]
-                            p4 = [sx1, sy2]
-                        elif facing_right:
-                            # 3D Depth Perspective: Facing right (door is between wheels on left half, tilted with 3D depth)
-                            sx1 = int(x1 + 0.22 * bw)  # in front of rear wheel
-                            sx2 = int(x1 + 0.50 * bw)  # behind front wheel / A-pillar
-                            dx = sx2 - sx1
-                            sy1_l = int(y1 + 0.42 * bh)  # below window sill
-                            sy2_l = int(y1 + 0.85 * bh)  # above bottom skirt
-                            slope = 0.082  # +4.7° 3D perspective slope along body line
-                            sy1_r = int(sy1_l + slope * dx)
-                            sy2_r = int(sy2_l + slope * dx)
-                            p1 = [sx1, sy1_l]
-                            p2 = [sx2, sy1_r]
-                            p3 = [sx2, sy2_r]
-                            p4 = [sx1, sy2_l]
-                        else:
-                            # 3D Depth Perspective: Facing left (door is on the right)
-                            sx1 = int(x1 + 0.50 * bw)
-                            sx2 = int(x1 + 0.78 * bw)
-                            dx = sx2 - sx1
-                            sy1_r = int(y1 + 0.42 * bh)
-                            sy2_r = int(y1 + 0.85 * bh)
-                            slope = 0.082
-                            sy1_l = int(sy1_r + slope * dx)
-                            sy2_l = int(sy2_r + slope * dx)
-                            p1 = [sx1, sy1_l]
-                            p2 = [sx2, sy1_r]
-                            p3 = [sx2, sy2_r]
-                            p4 = [sx1, sy2_l]
-
-                        quad = order_points(np.array([p1, p2, p3, p4], dtype=np.float32))
-                        valid, _ = is_valid_planar_quad(
-                            quad, w, h,
-                            min_area_fraction=self.geom_cfg.min_area_fraction,
-                            max_area_fraction=self.geom_cfg.max_area_fraction,
-                            min_angle=self.geom_cfg.min_internal_angle_deg,
-                            max_angle=self.geom_cfg.max_internal_angle_deg
-                        )
-                        if valid:
-                            c_min_y = int(min(p1[1], p2[1]))
-                            c_max_y = int(max(p3[1], p4[1]))
-                            candidates.append(CandidateDetection(
-                                bbox=(sx1, c_min_y, sx2, c_max_y),
-                                quad=quad,
-                                class_name="car side ad space",
-                                confidence=conf,
-                                mask=None
-                            ))
-                            continue
-
-                # Head-on vehicle (no side flank visible) is treated as a traffic occluder
+                # Head-on transit vehicle (no side flank visible) is treated as a traffic occluder
                 occ_quad = order_points(np.array([
                     [x1, y1], [x2, y1], [x2, y2], [x1, y2]
                 ], dtype=np.float32))
@@ -450,12 +799,38 @@ class SurfaceDetector:
                 ))
                 continue
 
+            # Special Infrastructure & Overpass Advertising Handler: Bridge Walls & Girders
+            if any(k in cls_name for k in ["bridge wall", "concrete bridge wall", "overhead bridge girder", "bridge girder"]):
+                if conf >= 0.40:
+                    quad = self.fit_bridge_3d_quad(frame, bbox)
+                    if quad is not None:
+                        valid, _ = is_valid_planar_quad(
+                            quad, w, h,
+                            min_area_fraction=self.geom_cfg.min_area_fraction,
+                            max_area_fraction=self.geom_cfg.max_area_fraction,
+                            min_angle=self.geom_cfg.min_internal_angle_deg,
+                            max_angle=self.geom_cfg.max_internal_angle_deg
+                        )
+                        if valid:
+                            b_min_y = int(min(quad[:, 1]))
+                            b_max_y = int(max(quad[:, 1]))
+                            candidates.append(CandidateDetection(
+                                bbox=(int(min(quad[:, 0])), b_min_y, int(max(quad[:, 0])), b_max_y),
+                                quad=quad,
+                                class_name="bridge wall ad space",
+                                confidence=conf,
+                                mask=None
+                            ))
+                            continue
+
             # Determine whether this is a candidate or an occluder
             is_candidate = False
             is_occluder = False
 
             if self.model_type == "yolo_world":
-                if any(cand.lower() in cls_name for cand in self.det_cfg.candidate_classes):
+                if "window" in cls_name:
+                    is_occluder = True
+                elif any(cand.lower() in cls_name for cand in self.det_cfg.candidate_classes):
                     is_candidate = True
                 elif any(occ.lower() in cls_name for occ in self.det_cfg.occluder_classes):
                     is_occluder = True
@@ -468,7 +843,39 @@ class SurfaceDetector:
 
             if is_candidate:
                 # Fast <2ms quad extraction
-                quad = self.refine_quad_fast(frame, bbox)
+                if any(k in cls_name for k in ["bridge wall", "concrete bridge wall", "overhead bridge girder", "bridge girder"]):
+                    if conf < 0.40:
+                        continue
+                    quad = self.fit_bridge_3d_quad(frame, bbox)
+                    if quad is None:
+                        continue
+                elif any(k in cls_name for k in ["skyscraper", "high-rise", "building", "facade", "wall", "brick wall"]):
+                    # First, check if there is an unobstructed upper plain wall above windows
+                    upper_quad = self.fit_upper_wall_plain_quad(frame, bbox, window_boxes)
+                    if upper_quad is not None:
+                        candidates.append(CandidateDetection(
+                            bbox=(int(min(upper_quad[:, 0])), int(min(upper_quad[:, 1])), int(max(upper_quad[:, 0])), int(max(upper_quad[:, 1]))),
+                            quad=upper_quad,
+                            class_name="plain wall ad space (above windows)",
+                            confidence=conf,
+                            mask=None
+                        ))
+                        continue
+                    else:
+                        # Verify that this building facade has a plain / plane surface suitable for placing an ad,
+                        # and is not covered in a dense window grid (such as residential apartment towers)
+                        crop_b = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
+                        if self.is_window_grid_facade(crop_b):
+                            # Facade is covered with windows/balconies; not a plain ad space
+                            continue
+                        if conf < 0.22 and self.is_window_grid_facade(crop_b, strict=True):
+                            continue
+                        quad = self.refine_quad_fast(frame, bbox)
+                elif any(k in cls_name for k in ["billboard", "banner", "poster", "advertising board", "signboard", "display screen"]):
+                    # Fit 3D perspective quad for urban billboards and banners
+                    quad = self.fit_billboard_banner_3d_quad(frame, bbox)
+                else:
+                    quad = self.refine_quad_fast(frame, bbox)
 
                 valid, _ = is_valid_planar_quad(
                     quad, w, h,
@@ -479,10 +886,17 @@ class SurfaceDetector:
                 )
 
                 if valid:
+                    b_min_y = int(min(quad[:, 1]))
+                    b_max_y = int(max(quad[:, 1]))
+                    c_display = cls_name
+                    if any(k in cls_name for k in ["skyscraper", "building", "high-rise"]):
+                        c_display = "building facade ad space"
+                    elif any(k in cls_name for k in ["bridge", "girder"]):
+                        c_display = "bridge wall ad space"
                     candidates.append(CandidateDetection(
-                        bbox=bbox,
+                        bbox=(int(min(quad[:, 0])), b_min_y, int(max(quad[:, 0])), b_max_y),
                         quad=quad,
-                        class_name=cls_name,
+                        class_name=c_display,
                         confidence=conf,
                         mask=None
                     ))
@@ -498,8 +912,8 @@ class SurfaceDetector:
                     confidence=conf
                 ))
 
-        # If model found no candidates, run classical detector as supplement
-        if len(candidates) == 0:
+        # If model found no candidates, only run classical detector if in classical mode
+        if len(candidates) == 0 and self.model_type == "classical":
             c_cand, _ = self.detect_classical(frame)
             candidates.extend(c_cand)
 

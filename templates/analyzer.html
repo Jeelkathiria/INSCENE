@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ad Placement Analyzer — ADVERT-VISION 3D</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: {
+              950: '#070709',
+              900: '#0E0E12',
+              850: '#14141A',
+              800: '#1B1B22',
+              700: '#272732',
+              border: 'rgba(255, 255, 255, 0.08)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #070709;
+      color: #E4E4E7;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .panel-clean {
+      background: rgba(14, 14, 18, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #070709; }
+    ::-webkit-scrollbar-thumb { background: #272732; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-white selection:text-black">
+
+  <!-- Minimal Floating Navigation Bar -->
+  <header class="sticky top-0 z-50 w-full border-b border-white/5 bg-surface-950/80 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Back to Home Link & Brand -->
+      <div class="flex items-center space-x-4">
+        <a href="/" class="flex items-center space-x-2 text-xs font-mono text-zinc-400 hover:text-white transition px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-white/20">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+          <span>Back to Overview</span>
+        </a>
+
+        <div class="h-4 w-px bg-zinc-800 hidden sm:block"></div>
+
+        <div class="flex items-center space-x-2 font-mono text-xs">
+          <span class="font-bold text-white tracking-tight">ADVERT-VISION 3D</span>
+          <span class="text-zinc-500">/</span>
+          <span class="text-zinc-400">Workspace</span>
+        </div>
+      </div>
+
+      <!-- Engine Status -->
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Engine Online</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Analysis Workspace -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full flex flex-col space-y-8">
+    
+    <!-- Upload Section -->
+    <section id="uploadSection" class="panel-clean rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl relative">
+      <div class="max-w-3xl mx-auto text-center flex flex-col items-center">
+        
+        <!-- Mode Switcher Tabs (Video vs Photo) -->
+        <div class="flex items-center justify-center mb-6">
+          <div class="inline-flex p-1 rounded-full bg-black/60 border border-zinc-800 shadow-xl font-mono text-xs">
+            <button id="tabVideoMode" onclick="setAnalysisMode('video')" class="px-6 py-2 rounded-full font-bold uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 bg-white text-black shadow">
+              <i data-lucide="video" class="w-3.5 h-3.5"></i>
+              <span>Video Analysis</span>
+            </button>
+            <button id="tabPhotoMode" onclick="setAnalysisMode('photo')" class="px-6 py-2 rounded-full font-bold uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 text-zinc-400 hover:text-white">
+              <i data-lucide="image" class="w-3.5 h-3.5"></i>
+              <span>Photo 3D Analysis</span>
+            </button>
+          </div>
+        </div>
+
+        <h1 id="modeTitle" class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          Upload Video for In-Scene Ad Space Extraction
+        </h1>
+        <p id="modeSubtitle" class="text-xs sm:text-sm text-zinc-400 mt-2 mb-6 max-w-xl font-sans">
+          Select or drop any video clip. The pipeline extracts frames in real-time, detects candidate planar surfaces, tracks them with homography, and partitions sequential ad slots across the timeline.
+        </p>
+
+        <!-- 1-Click Evaluation Presets -->
+        <div class="w-full mb-6 p-3 rounded-2xl bg-black/40 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+          <span class="text-zinc-400 text-[11px] font-bold uppercase tracking-wider flex items-center space-x-1.5">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-zinc-300"></i>
+            <span>Test Presets:</span>
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="loadSamplePreset('train')" class="px-3 py-1.5 rounded-full bg-surface-850 hover:bg-surface-700 text-zinc-300 border border-zinc-700/60 transition text-[11px]">
+              🚇 Train Interior (Photo)
+            </button>
+            <button onclick="loadSamplePreset('bridge')" class="px-3 py-1.5 rounded-full bg-surface-850 hover:bg-surface-700 text-zinc-300 border border-zinc-700/60 transition text-[11px]">
+              🌉 Bridge Girder (Photo)
+            </button>
+            <button onclick="loadSamplePreset('billboard')" class="px-3 py-1.5 rounded-full bg-surface-850 hover:bg-surface-700 text-zinc-300 border border-zinc-700/60 transition text-[11px]">
+              🏙️ Urban Billboard (Photo)
+            </button>
+            <button onclick="loadSamplePreset('drift')" class="px-3 py-1.5 rounded-full bg-surface-850 hover:bg-surface-700 text-zinc-300 border border-zinc-700/60 transition text-[11px]">
+              🏎️ Drifting Car (Video)
+            </button>
+            <button onclick="loadSamplePreset('city')" class="px-3 py-1.5 rounded-full bg-surface-850 hover:bg-surface-700 text-zinc-300 border border-zinc-700/60 transition text-[11px]">
+              🌆 City Street (Video)
+            </button>
+          </div>
+        </div>
+
+        <!-- Clean Dropzone Box -->
+        <div id="dropzone" 
+             onclick="triggerFileInput()"
+             class="w-full border-2 border-dashed border-zinc-700 hover:border-white bg-surface-900/40 hover:bg-surface-850 rounded-3xl p-10 cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-4 group">
+          <input type="file" id="mediaFileInput" class="hidden" accept="video/*" onchange="handleFileSelect(event)">
+          
+          <div class="w-14 h-14 rounded-2xl bg-surface-800 flex items-center justify-center text-zinc-400 group-hover:text-white transition">
+            <i id="dropzoneIcon" data-lucide="upload-cloud" class="w-7 h-7"></i>
+          </div>
+
+          <div class="text-center space-y-1">
+            <span class="text-sm font-semibold text-white group-hover:underline">Click to browse files</span>
+            <span id="dropzoneHint" class="text-xs text-zinc-400 block font-mono">or drag and drop your media here</span>
+            <p id="dropzoneFormats" class="text-[11px] text-zinc-500 pt-1 font-mono uppercase tracking-wider">Supports MP4, MOV, AVI, MKV, WebM</p>
+          </div>
+        </div>
+
+        <!-- Selected File Status Bar -->
+        <div id="selectedFileBar" class="hidden w-full mt-6 p-4 bg-surface-850 rounded-2xl border border-zinc-700 flex items-center justify-between font-mono">
+          <div class="flex items-center space-x-3 overflow-hidden text-left">
+            <i id="selectedFileIcon" data-lucide="file-video" class="w-5 h-5 text-white shrink-0"></i>
+            <div class="truncate">
+              <div id="selectedFileName" class="text-xs font-semibold text-white truncate">filename.mp4</div>
+              <div id="selectedFileSize" class="text-[10px] text-zinc-400">0.0 MB</div>
+            </div>
+          </div>
+          <button id="btnStartAnalysis" onclick="startAnalysis()" class="px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider bg-white text-black hover:bg-zinc-200 transition shadow flex items-center space-x-2 shrink-0">
+            <i id="btnStartIcon" data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+            <span id="btnStartText">Analyze Video</span>
+          </button>
+        </div>
+
+        <!-- Live Frame Extraction Progress HUD (Video Mode) -->
+        <div id="processingLoader" class="hidden w-full mt-8 p-6 sm:p-8 bg-surface-900 rounded-3xl border border-white/10 shadow-2xl flex flex-col space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full border-b border-zinc-800 pb-4 font-mono">
+            <div class="flex items-center space-x-3 text-left">
+              <div class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+                <i data-lucide="scan" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center space-x-2">
+                  <span>Live Video Frame Extraction &amp; Tracking Stream</span>
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                </h4>
+                <p id="liveStatusText" class="text-xs text-zinc-400 mt-0.5">Asynchronous producer-consumer workers processing stream frames in RAM...</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-4 self-end sm:self-center">
+              <div class="text-right">
+                <div id="liveElapsedTimer" class="text-lg font-bold font-mono text-zinc-300">00:00.0s</div>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-widest block">Elapsed</span>
+              </div>
+              <div class="text-right border-l border-zinc-800 pl-4">
+                <div id="livePercentVal" class="text-3xl font-extrabold font-mono text-white tracking-tight">0.0%</div>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-widest block">Progress</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center w-full">
+            <div class="md:col-span-6 flex flex-col space-y-2">
+              <div class="relative bg-black rounded-2xl overflow-hidden border border-zinc-800 aspect-video flex items-center justify-center shadow-inner">
+                <img id="liveFramePreview" class="w-full h-full object-contain" src="" alt="Live Feed">
+                <div id="livePreviewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 space-y-2 font-mono">
+                  <i data-lucide="film" class="w-8 h-8 text-zinc-600 animate-bounce"></i>
+                  <span class="text-xs">Decoding Stream...</span>
+                </div>
+                <div class="absolute top-3 left-3 flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur text-[10px] font-mono text-red-400 font-bold uppercase">
+                  <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                  <span>LIVE REC</span>
+                </div>
+                <div class="absolute bottom-3 right-3 px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur text-[10px] font-mono text-white">
+                  <span id="livePreviewFrameNum">Frame #0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-6 flex flex-col space-y-4 font-mono">
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-xs text-zinc-400">
+                  <span>Extraction Progress</span>
+                  <span id="liveProgressFraction">0 / 0 frames</span>
+                </div>
+                <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <div id="liveProgressBar" class="h-full rounded-full bg-white transition-all duration-150" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-surface-850 p-3 rounded-xl border border-zinc-800">
+                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block">Throughput</span>
+                  <span id="liveFpsVal" class="text-sm font-bold text-white">0.0 FPS</span>
+                </div>
+                <div class="bg-surface-850 p-3 rounded-xl border border-zinc-800">
+                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block">Active Surfaces</span>
+                  <span id="liveActiveSurfaces" class="text-sm font-bold text-white">0 Detected</span>
+                </div>
+                <div class="bg-surface-850 p-3 rounded-xl border border-zinc-800">
+                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block">Playhead</span>
+                  <span id="liveTimestamp" class="text-sm font-bold text-zinc-300">00:00.0s</span>
+                </div>
+                <div class="bg-surface-850 p-3 rounded-xl border border-zinc-800">
+                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block">Status</span>
+                  <span class="text-sm font-bold text-emerald-400">Processing...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photo Processing Loader -->
+        <div id="photoProcessingLoader" class="hidden w-full mt-8 p-8 bg-surface-900 rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center space-y-4 font-mono">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
+              <i data-lucide="scan" class="w-5 h-5 animate-pulse"></i>
+            </div>
+            <div class="text-left">
+              <h4 class="text-sm font-bold text-white">Analyzing 3D Planar Surfaces</h4>
+              <p class="text-xs text-zinc-400 mt-0.5">Detecting candidate walls/billboards &amp; computing homography matrix...</p>
+            </div>
+          </div>
+          <div class="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+            <div class="h-full rounded-full bg-white animate-pulse w-full"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Results Workspace (Appears when media is analyzed) -->
+    <section id="resultsSection" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Left 8 Columns: Media Viewport & Inspector -->
+      <div class="lg:col-span-8 flex flex-col space-y-6">
+        
+        <!-- Viewport Card -->
+        <div class="panel-clean rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-white/10">
+          <div class="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between bg-black/40">
+            <div class="flex items-center space-x-2 truncate font-mono">
+              <i id="mediaTypeIcon" data-lucide="video" class="w-4 h-4 text-white"></i>
+              <h3 id="currentMediaLabel" class="text-xs font-semibold text-zinc-200 truncate">media_analyzed.mp4</h3>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="flex items-center bg-surface-850 p-1 rounded-full border border-zinc-800 text-xs font-mono">
+              <button id="btnToggleAnnotated" onclick="switchMediaMode('annotated')" class="px-4 py-1 rounded-full font-bold uppercase transition bg-white text-black shadow">
+                AI Overlay
+              </button>
+              <button id="btnToggleRaw" onclick="switchMediaMode('raw')" class="px-4 py-1 rounded-full font-medium uppercase text-zinc-400 hover:text-white transition">
+                Raw Media
+              </button>
+            </div>
+          </div>
+
+          <!-- Benchmark Metrics Strip -->
+          <div class="px-5 py-3 bg-black/60 border-b border-zinc-800 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+            <div>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-widest block">Processing Time</span>
+              <span id="statProcTime" class="text-sm font-bold text-white">--</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-widest block">Throughput Speed</span>
+              <span id="statProcFps" class="text-sm font-bold text-white">-- FPS</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-widest block">Extracted Frames</span>
+              <span id="statTotalFrames" class="text-sm font-bold text-white">--</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-zinc-500 uppercase tracking-widest block">Performance Ratio</span>
+              <span id="statSpeedup" class="text-sm font-bold text-white">--</span>
+            </div>
+          </div>
+
+          <!-- Target Square Banner -->
+          <div class="px-5 py-2.5 bg-emerald-950/30 border-b border-emerald-500/20 flex items-center justify-between text-xs font-mono text-emerald-400">
+            <div class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-bold text-white uppercase tracking-wider">TARGET SQUARE:</span>
+              <span>Optimal Ad Space Highlighted in Neon Green (P1 - P4)</span>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] uppercase font-bold border border-emerald-500/30">Active</span>
+          </div>
+
+          <!-- Media Viewport -->
+          <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+            <video id="resultsVideoPlayer" class="w-full h-full object-contain" controls autoplay loop playsinline>
+              <source id="resultsVideoSource" src="" type="video/mp4">
+              Your browser does not support video playback.
+            </video>
+            <img id="resultsPhotoPlayer" class="hidden w-full h-full object-contain" src="" alt="Analyzed Photo">
+          </div>
+
+          <!-- Diagnostic Footnote -->
+          <div class="px-5 py-3 bg-surface-900 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400 font-mono">
+            <div>
+              <span>Total Ad Spaces Detected: <strong id="statCount" class="text-white">0</strong></span>
+            </div>
+            <button onclick="resetToUpload()" class="text-white hover:underline text-xs flex items-center space-x-1">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span id="btnUploadNewText">Upload New Media</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ScoreEngine Factor Inspector -->
+        <div class="panel-clean rounded-3xl p-6 shadow-xl border border-white/10 font-mono">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                <i data-lucide="gauge" class="w-4 h-4 text-white"></i>
+                <span>ScoreEngine Factor Inspector</span>
+              </h3>
+              <p class="text-xs text-zinc-400 mt-0.5 font-sans">Multi-factor objective scoring metrics for selected candidate</p>
+            </div>
+            <div id="inspectorBadge" class="px-3.5 py-1 rounded-full text-xs font-bold font-mono bg-white/10 text-white border border-white/20">
+              Rank #1 (Optimal)
+            </div>
+          </div>
+
+          <!-- 5 Metrics Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+            <div class="bg-black/40 p-3.5 rounded-2xl border border-zinc-800">
+              <div class="flex items-center justify-between text-zinc-400">
+                <span id="m1Label">⏱ Screen Time</span>
+                <span id="scoreDur" class="text-white font-bold">--</span>
+              </div>
+              <div class="text-base font-bold text-white mt-1.5" id="rawDur">--s</div>
+              <div class="w-full bg-zinc-800 h-1 rounded-full mt-2.5 overflow-hidden">
+                <div id="barDur" class="bg-white h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="bg-black/40 p-3.5 rounded-2xl border border-zinc-800">
+              <div class="flex items-center justify-between text-zinc-400">
+                <span>📐 Canvas Area</span>
+                <span id="scoreArea" class="text-white font-bold">--</span>
+              </div>
+              <div class="text-base font-bold text-white mt-1.5" id="rawArea">--%</div>
+              <div class="w-full bg-zinc-800 h-1 rounded-full mt-2.5 overflow-hidden">
+                <div id="barArea" class="bg-white h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="bg-black/40 p-3.5 rounded-2xl border border-zinc-800">
+              <div class="flex items-center justify-between text-zinc-400">
+                <span>🛡 Occlusion</span>
+                <span id="scoreOcc" class="text-white font-bold">--</span>
+              </div>
+              <div class="text-base font-bold text-white mt-1.5" id="rawOcc">--%</div>
+              <div class="w-full bg-zinc-800 h-1 rounded-full mt-2.5 overflow-hidden">
+                <div id="barOcc" class="bg-white h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="bg-black/40 p-3.5 rounded-2xl border border-zinc-800">
+              <div class="flex items-center justify-between text-zinc-400">
+                <span id="m4Label">📈 Stability</span>
+                <span id="scoreStab" class="text-white font-bold">--</span>
+              </div>
+              <div class="text-base font-bold text-white mt-1.5 truncate" id="rawStab">--px</div>
+              <div class="w-full bg-zinc-800 h-1 rounded-full mt-2.5 overflow-hidden">
+                <div id="barStab" class="bg-white h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="bg-black/40 p-3.5 rounded-2xl border border-zinc-800">
+              <div class="flex items-center justify-between text-zinc-400">
+                <span>🎯 Ortho/Geom</span>
+                <span id="scoreGeom" class="text-white font-bold">--</span>
+              </div>
+              <div class="text-base font-bold text-white mt-1.5" id="rawGeom">--°</div>
+              <div class="w-full bg-zinc-800 h-1 rounded-full mt-2.5 overflow-hidden">
+                <div id="barGeom" class="bg-white h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Composite Summary Banner -->
+          <div class="mt-5 p-4 rounded-2xl bg-black/60 border border-zinc-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div class="flex items-center space-x-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                <span id="scoreBanner" class="text-xl font-bold font-mono text-white">--</span>
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-widest font-bold text-zinc-400">Composite Ad Placement Fitness Score</div>
+                <div id="auditText" class="text-xs text-zinc-200 mt-0.5 font-sans">Evaluation notes will appear here.</div>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2 shrink-0">
+              <a id="btnCsv" href="#" target="_blank" class="px-4 py-2 rounded-full text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center space-x-1.5">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-zinc-300"></i>
+                <span>CSV</span>
+              </a>
+              <a id="btnJson" href="#" target="_blank" class="px-4 py-2 rounded-full text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center space-x-1.5">
+                <i data-lucide="code" class="w-3.5 h-3.5 text-zinc-300"></i>
+                <span>JSON</span>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Right 4 Columns: Top Candidate Ad Spaces Leaderboard -->
+      <div class="lg:col-span-4 flex flex-col space-y-4">
+        <div class="panel-clean rounded-3xl p-6 shadow-xl flex-1 flex flex-col border border-white/10 font-mono">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-3.5">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="award" class="w-5 h-5 text-white"></i>
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Ranked Placements</h3>
+            </div>
+            <span id="badgeCandidateCount" class="text-xs px-3 py-0.5 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-800">
+              0 Placements
+            </span>
+          </div>
+
+          <p id="candidateHelpText" class="text-xs text-zinc-400 my-2 font-sans">Click any candidate below to inspect details:</p>
+
+          <!-- Master Timelines Box -->
+          <div id="timelineSummaryCard" class="my-2 p-4 rounded-2xl bg-black/60 border border-zinc-800 flex flex-col space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span id="timelineSummaryLabel" class="text-[10px] text-zinc-400 uppercase tracking-widest flex items-center space-x-1.5">
+                <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-white"></i>
+                <span>Sequential Timelines:</span>
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-bold border border-white/20">
+                Non-Overlap
+              </span>
+            </div>
+            <div id="timelineSummaryText" class="text-base font-bold text-white tracking-wide">
+              No intervals yet
+            </div>
+            <span class="text-[11px] text-zinc-400 font-sans">
+              Distinct sequential ad slots partitioned across video runtime.
+            </span>
+          </div>
+
+          <!-- Candidate List -->
+          <div id="candidatesList" class="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[580px]">
+            <!-- Injected via JavaScript -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    let currentMode = "video";
+    let selectedFile = null;
+    let currentResultData = null;
+    let activeMediaMode = "annotated";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      setupDropzone();
+
+      // Check if URL has query param for preset
+      const params = new URLSearchParams(window.location.search);
+      const presetParam = params.get("preset");
+      if (presetParam) {
+        loadSamplePreset(presetParam);
+      }
+    });
+
+    const SAMPLE_PRESETS = {
+      train: { filename: "b74cc201_Train_Inside.webp", displayName: "Train_Interior.webp", mode: "photo", type: "image/webp" },
+      bridge: { filename: "b50ffa66_bridge.webp", displayName: "Bridge_Girder.webp", mode: "photo", type: "image/webp" },
+      billboard: { filename: "98c3dc2f_blank-billboard-stands-urban-area-street-empty-large-advertisement-space-brand-campaign-ad-banner-mock-up-city-center-411676445.webp", displayName: "Urban_Street_Billboard.webp", mode: "photo", type: "image/webp" },
+      drift: { filename: "b556ef61_Drifiting_CAR.mp4", displayName: "Drifting_Car.mp4", mode: "video", type: "video/mp4" },
+      city: { filename: "9e44283a_CITY_VIDEO.mp4", displayName: "City_Street_Video.mp4", mode: "video", type: "video/mp4" }
+    };
+
+    async function loadSamplePreset(presetKey) {
+      const preset = SAMPLE_PRESETS[presetKey];
+      if (!preset) return;
+      setAnalysisMode(preset.mode);
+      try {
+        const fileUrl = `/media/uploads/${preset.filename}`;
+        const res = await fetch(fileUrl);
+        if (!res.ok) throw new Error("Preset file not found on server.");
+        const blob = await res.blob();
+        const file = new File([blob], preset.displayName, { type: preset.type });
+        handleFile(file);
+      } catch (err) {
+        console.warn("Could not load preset file directly:", err);
+      }
+    }
+
+    function setAnalysisMode(mode) {
+      currentMode = mode;
+      selectedFile = null;
+      document.getElementById("selectedFileBar").classList.add("hidden");
+      document.getElementById("resultsSection").classList.add("hidden");
+
+      const tabVideo = document.getElementById("tabVideoMode");
+      const tabPhoto = document.getElementById("tabPhotoMode");
+      const modeTitle = document.getElementById("modeTitle");
+      const modeSubtitle = document.getElementById("modeSubtitle");
+      const dropzoneFormats = document.getElementById("dropzoneFormats");
+      const btnStartText = document.getElementById("btnStartText");
+      const fileInput = document.getElementById("mediaFileInput");
+
+      if (mode === "video") {
+        tabVideo.className = "px-6 py-2 rounded-full font-bold uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 bg-white text-black shadow";
+        tabPhoto.className = "px-6 py-2 rounded-full font-bold uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 text-zinc-400 hover:text-white";
+        modeTitle.textContent = "Upload Video for In-Scene Ad Space Extraction";
+        modeSubtitle.textContent = "Select or drop any video clip. The pipeline extracts frames in real-time, detects candidate planar surfaces, tracks them with homography, and partitions sequential ad slots across the timeline.";
+        dropzoneFormats.textContent = "Supports MP4, MOV, AVI, MKV, WebM";
+        btnStartText.textContent = "Analyze Video";
+        fileInput.setAttribute("accept", "video/*");
+      } else {
+        tabPhoto.className = "px-6 py-2 rounded-full font-bold uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 bg-white text-black shadow";
+        tabVideo.className = "px-6 py-2 rounded-full font-bold uppercase tracking-wider transition-all duration-200 flex items-center space-x-2 text-zinc-400 hover:text-white";
+        modeTitle.textContent = "Upload Photo for 3D Planar Ad Space Extraction";
+        modeSubtitle.textContent = "Select or drop any still photo or high-res image. The pipeline detects optimal planar billboard surfaces, bridge beams, plain walls, transit card posters, and computes 3D homography.";
+        dropzoneFormats.textContent = "Supports JPG, JPEG, PNG, WEBP";
+        btnStartText.textContent = "Analyze Photo";
+        fileInput.setAttribute("accept", "image/*");
+      }
+      lucide.createIcons();
+    }
+
+    function triggerFileInput() {
+      document.getElementById("mediaFileInput").click();
+    }
+
+    function setupDropzone() {
+      const dropzone = document.getElementById("dropzone");
+      if (!dropzone) return;
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => {
+          dropzone.classList.add("border-white", "bg-surface-800");
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => {
+          dropzone.classList.remove("border-white", "bg-surface-800");
+        }, false);
+      });
+
+      dropzone.addEventListener("drop", (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+          handleFile(files[0]);
+        }
+      }, false);
+    }
+
+    function handleFileSelect(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    }
+
+    function handleFile(file) {
+      selectedFile = file;
+      const isImg = file.type.startsWith("image/");
+      const isVid = file.type.startsWith("video/");
+
+      if (isImg && currentMode === "video") setAnalysisMode("photo");
+      else if (isVid && currentMode === "photo") setAnalysisMode("video");
+
+      document.getElementById("selectedFileName").textContent = file.name;
+      document.getElementById("selectedFileSize").textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
+      document.getElementById("selectedFileBar").classList.remove("hidden");
+
+      const iconEl = document.getElementById("selectedFileIcon");
+      iconEl.setAttribute("data-lucide", currentMode === "video" ? "file-video" : "file-image");
+      lucide.createIcons();
+    }
+
+    async function startAnalysis() {
+      if (!selectedFile) return;
+      if (currentMode === "video") {
+        await startVideoAnalysis();
+      } else {
+        await startPhotoAnalysis();
+      }
+    }
+
+    async function startVideoAnalysis() {
+      const btnStart = document.getElementById("btnStartAnalysis");
+      btnStart.disabled = true;
+      btnStart.classList.add("opacity-50", "cursor-not-allowed");
+
+      const loader = document.getElementById("processingLoader");
+      loader.classList.remove("hidden");
+      document.getElementById("resultsSection").classList.add("hidden");
+
+      const progressBar = document.getElementById("liveProgressBar");
+      const percentVal = document.getElementById("livePercentVal");
+      const progressFraction = document.getElementById("liveProgressFraction");
+      const fpsVal = document.getElementById("liveFpsVal");
+      const activeSurfaces = document.getElementById("liveActiveSurfaces");
+      const liveTimestamp = document.getElementById("liveTimestamp");
+      const elapsedTimer = document.getElementById("liveElapsedTimer");
+      const framePreview = document.getElementById("liveFramePreview");
+      const placeholder = document.getElementById("livePreviewPlaceholder");
+      const previewFrameNum = document.getElementById("livePreviewFrameNum");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        const res = await fetch("/api/start_analysis", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Could not start video analysis.");
+        const data = await res.json();
+        const jobId = data.job_id;
+
+        const pollInterval = setInterval(async () => {
+          try {
+            const pRes = await fetch(`/api/job_progress/${jobId}`);
+            if (!pRes.ok) return;
+            const progress = await pRes.json();
+
+            const pct = progress.percent || 0.0;
+            progressBar.style.width = pct + "%";
+            percentVal.textContent = pct.toFixed(1) + "%";
+            progressFraction.textContent = `${progress.current_frame || 0} / ${progress.total_frames || 0} frames`;
+
+            if (progress.fps) fpsVal.textContent = progress.fps.toFixed(1) + " FPS";
+            if (progress.active_surfaces !== undefined) activeSurfaces.textContent = progress.active_surfaces + " Detected";
+            if (progress.timestamp_sec !== undefined) liveTimestamp.textContent = `${progress.timestamp_sec.toFixed(1)}s`;
+            if (progress.elapsed_sec !== undefined) elapsedTimer.textContent = `${progress.elapsed_sec.toFixed(1)}s`;
+
+            if (progress.preview_frame) {
+              framePreview.src = "data:image/jpeg;base64," + progress.preview_frame;
+              placeholder.classList.add("hidden");
+              previewFrameNum.textContent = `Frame #${progress.current_frame}`;
+            }
+
+            if (progress.status === "completed") {
+              clearInterval(pollInterval);
+              loader.classList.add("hidden");
+              btnStart.disabled = false;
+              btnStart.classList.remove("opacity-50", "cursor-not-allowed");
+              renderVideoResults(progress.result);
+            } else if (progress.status === "failed") {
+              clearInterval(pollInterval);
+              loader.classList.add("hidden");
+              btnStart.disabled = false;
+              btnStart.classList.remove("opacity-50", "cursor-not-allowed");
+              alert("Video analysis failed: " + (progress.error || "Unknown error"));
+            }
+          } catch (e) {
+            console.error("Polling error:", e);
+          }
+        }, 150);
+
+      } catch (err) {
+        loader.classList.add("hidden");
+        btnStart.disabled = false;
+        btnStart.classList.remove("opacity-50", "cursor-not-allowed");
+        alert("Upload failed: " + err.message);
+      }
+    }
+
+    async function startPhotoAnalysis() {
+      const btnStart = document.getElementById("btnStartAnalysis");
+      btnStart.disabled = true;
+      btnStart.classList.add("opacity-50", "cursor-not-allowed");
+
+      const photoLoader = document.getElementById("photoProcessingLoader");
+      photoLoader.classList.remove("hidden");
+      document.getElementById("resultsSection").classList.add("hidden");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        const res = await fetch("/api/analyze_photo", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Photo analysis failed.");
+        const data = await res.json();
+
+        photoLoader.classList.add("hidden");
+        btnStart.disabled = false;
+        btnStart.classList.remove("opacity-50", "cursor-not-allowed");
+        renderPhotoResults(data);
+
+      } catch (err) {
+        photoLoader.classList.add("hidden");
+        btnStart.disabled = false;
+        btnStart.classList.remove("opacity-50", "cursor-not-allowed");
+        alert("Photo analysis failed: " + err.message);
+      }
+    }
+
+    function formatTimeline(startSec, endSec) {
+      const m1 = Math.floor(startSec / 60);
+      const s1 = (startSec % 60).toFixed(0).padStart(2, '0');
+      const m2 = Math.floor(endSec / 60);
+      const s2 = (endSec % 60).toFixed(0).padStart(2, '0');
+      return `${m1}:${s1} - ${m2}:${s2}`;
+    }
+
+    function renderVideoResults(data) {
+      currentResultData = data;
+      currentResultData._mode = "video";
+
+      const vidPlayer = document.getElementById("resultsVideoPlayer");
+      const vidSource = document.getElementById("resultsVideoSource");
+      const photoPlayer = document.getElementById("resultsPhotoPlayer");
+
+      vidPlayer.classList.remove("hidden");
+      photoPlayer.classList.add("hidden");
+
+      vidSource.src = data.annotated_video_url;
+      vidPlayer.load();
+      vidPlayer.play().catch(e => console.log("Autoplay caught:", e));
+
+      document.getElementById("currentMediaLabel").textContent = data.filename || "Video Placement";
+      document.getElementById("mediaTypeIcon").setAttribute("data-lucide", "video");
+
+      document.getElementById("statProcTime").textContent = `${data.total_processing_time_sec || '--'}s`;
+      document.getElementById("statProcFps").textContent = `${data.processing_fps || '--'} FPS`;
+      document.getElementById("statTotalFrames").textContent = data.total_frames || "--";
+      document.getElementById("statSpeedup").textContent = data.speedup_factor ? `${data.speedup_factor}x Realtime` : "--";
+
+      const placements = data.placements || [];
+      document.getElementById("statCount").textContent = placements.length;
+      document.getElementById("badgeCandidateCount").textContent = `${placements.length} Placements`;
+
+      const summaryCard = document.getElementById("timelineSummaryCard");
+      const summaryText = document.getElementById("timelineSummaryText");
+      if (data.sequential_timeline_summary) {
+        summaryCard.classList.remove("hidden");
+        summaryText.textContent = data.sequential_timeline_summary;
+      } else {
+        summaryCard.classList.add("hidden");
+      }
+
+      const listEl = document.getElementById("candidatesList");
+      listEl.innerHTML = "";
+
+      placements.forEach((p) => {
+        const item = document.createElement("div");
+        item.className = "p-4 rounded-2xl bg-black/40 border border-zinc-800 hover:border-white transition cursor-pointer flex flex-col space-y-2 group";
+        item.onclick = () => updateVideoInspector(p);
+
+        const timelineStr = formatTimeline(p.start_time_sec, p.end_time_sec);
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center space-x-2">
+              <span class="w-5 h-5 rounded-full bg-white/20 text-white font-mono flex items-center justify-center text-[10px]">#${p.rank}</span>
+              <span class="uppercase tracking-wider">${p.class_name}</span>
+            </span>
+            <span class="text-xs font-mono font-bold text-white bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20">
+              ★ ${p.final_score}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+            <span class="text-white flex items-center space-x-1">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              <span>${timelineStr} (${p.duration_sec}s)</span>
+            </span>
+            <span>${p.dimensions_wh || (p.mean_area_pct !== undefined ? p.mean_area_pct + '% area' : 'Ad Slot')}</span>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+
+      if (placements.length > 0) {
+        updateVideoInspector(placements[0]);
+      } else {
+        listEl.innerHTML = `
+          <div class="p-6 text-center text-zinc-400 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+            <i data-lucide="shield-alert" class="w-8 h-8 text-amber-400 mx-auto mb-2"></i>
+            <p class="font-medium text-white text-sm">No Viable Planar Ad Spaces Detected</p>
+            <p class="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">No stable planar surfaces met the visibility and planarity thresholds.</p>
+          </div>
+        `;
+      }
+
+      document.getElementById("btnCsv").href = data.csv_export_url || "#";
+      document.getElementById("btnJson").href = data.json_export_url || "#";
+
+      document.getElementById("resultsSection").classList.remove("hidden");
+      document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth" });
+      lucide.createIcons();
+    }
+
+    function renderPhotoResults(data) {
+      currentResultData = data;
+      currentResultData._mode = "photo";
+
+      const vidPlayer = document.getElementById("resultsVideoPlayer");
+      const photoPlayer = document.getElementById("resultsPhotoPlayer");
+
+      vidPlayer.classList.add("hidden");
+      photoPlayer.classList.remove("hidden");
+
+      photoPlayer.src = data.annotated_media_url;
+
+      document.getElementById("currentMediaLabel").textContent = data.filename || "Photo Placement";
+      document.getElementById("mediaTypeIcon").setAttribute("data-lucide", "image");
+
+      document.getElementById("statProcTime").textContent = `${data.total_processing_time_sec || '--'}s`;
+      document.getElementById("statProcFps").textContent = "Sub-second";
+      document.getElementById("statTotalFrames").textContent = "1 (Still Photo)";
+      document.getElementById("statSpeedup").textContent = "Instantaneous";
+
+      const placements = data.placements || [];
+      document.getElementById("statCount").textContent = placements.length;
+      document.getElementById("badgeCandidateCount").textContent = `${placements.length} Placements`;
+
+      document.getElementById("timelineSummaryCard").classList.add("hidden");
+
+      const listEl = document.getElementById("candidatesList");
+      listEl.innerHTML = "";
+
+      placements.forEach((p) => {
+        const item = document.createElement("div");
+        item.className = "p-4 rounded-2xl bg-black/40 border border-zinc-800 hover:border-white transition cursor-pointer flex flex-col space-y-2 group";
+        item.onclick = () => updatePhotoInspector(p);
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center space-x-2">
+              <span class="w-5 h-5 rounded-full bg-white/20 text-white font-mono flex items-center justify-center text-[10px]">#${p.rank}</span>
+              <span class="uppercase tracking-wider">${p.class_name}</span>
+            </span>
+            <span class="text-xs font-mono font-bold text-white bg-white/10 px-2.5 py-0.5 rounded-full border border-white/20">
+              ★ ${p.final_score}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+            <span class="text-white">${p.position_xy}</span>
+            <span>${p.dimensions_wh || (p.mean_area_pct !== undefined ? p.mean_area_pct + '% area' : 'Ad Slot')}</span>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+
+      if (placements.length > 0) {
+        updatePhotoInspector(placements[0]);
+      } else {
+        listEl.innerHTML = `
+          <div class="p-6 text-center text-zinc-400 bg-zinc-900/60 rounded-2xl border border-zinc-800">
+            <i data-lucide="shield-alert" class="w-8 h-8 text-amber-400 mx-auto mb-2"></i>
+            <p class="font-medium text-white text-sm">No Viable Planar Ad Spaces Detected</p>
+            <p class="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">This scene contains no plain ad walls (e.g. facades covered with residential windows or non-planar terrain).</p>
+          </div>
+        `;
+      }
+
+      document.getElementById("btnCsv").href = data.csv_export_url || "#";
+      document.getElementById("btnJson").href = data.json_export_url || "#";
+
+      document.getElementById("resultsSection").classList.remove("hidden");
+      document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth" });
+      lucide.createIcons();
+    }
+
+    function updateVideoInspector(p) {
+      document.getElementById("inspectorBadge").textContent = `Rank #${p.rank} (${p.class_name.toUpperCase()})`;
+      document.getElementById("m1Label").textContent = "⏱ Screen Time";
+      document.getElementById("rawDur").textContent = `${p.duration_sec}s`;
+      document.getElementById("scoreDur").textContent = p.score_duration;
+      document.getElementById("barDur").style.width = Math.min(100, p.score_duration) + "%";
+
+      document.getElementById("rawArea").textContent = `${p.mean_area_pct}%`;
+      document.getElementById("scoreArea").textContent = p.score_area;
+      document.getElementById("barArea").style.width = Math.min(100, p.score_area) + "%";
+
+      document.getElementById("rawOcc").textContent = `${p.mean_occlusion_pct}%`;
+      document.getElementById("scoreOcc").textContent = p.score_occlusion;
+      document.getElementById("barOcc").style.width = Math.min(100, p.score_occlusion) + "%";
+
+      document.getElementById("m4Label").textContent = "📈 Stability";
+      document.getElementById("rawStab").textContent = `${p.centroid_drift_px}px`;
+      document.getElementById("scoreStab").textContent = p.score_stability;
+      document.getElementById("barStab").style.width = Math.min(100, p.score_stability) + "%";
+
+      document.getElementById("rawGeom").textContent = `${p.mean_angle_deg}°`;
+      document.getElementById("scoreGeom").textContent = p.score_geometry;
+      document.getElementById("barGeom").style.width = Math.min(100, p.score_geometry) + "%";
+
+      document.getElementById("scoreBanner").textContent = p.final_score;
+      document.getElementById("auditText").textContent = p.audit_notes || "Optimal sequential ad space.";
+
+      if (p.start_time_sec !== undefined) {
+        seekTo(p.start_time_sec);
+      }
+    }
+
+    function updatePhotoInspector(p) {
+      document.getElementById("inspectorBadge").textContent = `Rank #${p.rank} (${p.class_name.toUpperCase()})`;
+      document.getElementById("m1Label").textContent = "📏 Dimensions";
+      document.getElementById("rawDur").textContent = p.dimensions_wh;
+      document.getElementById("scoreDur").textContent = "100.0";
+      document.getElementById("barDur").style.width = "100%";
+
+      document.getElementById("rawArea").textContent = `${p.mean_area_pct}%`;
+      document.getElementById("scoreArea").textContent = p.score_area;
+      document.getElementById("barArea").style.width = Math.min(100, p.score_area) + "%";
+
+      document.getElementById("rawOcc").textContent = `${p.mean_occlusion_pct}%`;
+      document.getElementById("scoreOcc").textContent = p.score_occlusion;
+      document.getElementById("barOcc").style.width = Math.min(100, p.score_occlusion) + "%";
+
+      document.getElementById("m4Label").textContent = "📍 Coordinates";
+      document.getElementById("rawStab").textContent = p.position_xy;
+      document.getElementById("scoreStab").textContent = "100.0";
+      document.getElementById("barStab").style.width = "100%";
+
+      document.getElementById("rawGeom").textContent = "Planar 3D";
+      document.getElementById("scoreGeom").textContent = p.score_geometry;
+      document.getElementById("barGeom").style.width = Math.min(100, p.score_geometry) + "%";
+
+      document.getElementById("scoreBanner").textContent = p.final_score;
+      document.getElementById("auditText").textContent = p.audit_notes || "3D Perspective Planar Quadrilateral.";
+    }
+
+    function seekTo(sec) {
+      const vid = document.getElementById("resultsVideoPlayer");
+      if (vid && !isNaN(sec)) {
+        vid.currentTime = Math.max(0, sec - 0.2);
+        vid.play().catch(e => console.log(e));
+      }
+    }
+
+    function switchMediaMode(mode) {
+      activeMediaMode = mode;
+      const btnAnnotated = document.getElementById("btnToggleAnnotated");
+      const btnRaw = document.getElementById("btnToggleRaw");
+
+      if (mode === "annotated") {
+        btnAnnotated.className = "px-4 py-1 rounded-full font-bold uppercase transition bg-white text-black shadow";
+        btnRaw.className = "px-4 py-1 rounded-full font-medium uppercase text-zinc-400 hover:text-white transition";
+      } else {
+        btnRaw.className = "px-4 py-1 rounded-full font-bold uppercase transition bg-white text-black shadow";
+        btnAnnotated.className = "px-4 py-1 rounded-full font-medium uppercase text-zinc-400 hover:text-white transition";
+      }
+
+      if (!currentResultData) return;
+
+      if (currentResultData._mode === "video") {
+        const vidPlayer = document.getElementById("resultsVideoPlayer");
+        const vidSource = document.getElementById("resultsVideoSource");
+        const currTime = vidPlayer.currentTime;
+        vidSource.src = mode === "annotated" ? currentResultData.annotated_video_url : currentResultData.raw_video_url;
+        vidPlayer.load();
+        vidPlayer.currentTime = currTime;
+        vidPlayer.play().catch(e => console.log(e));
+      } else {
+        const photoPlayer = document.getElementById("resultsPhotoPlayer");
+        photoPlayer.src = mode === "annotated" ? currentResultData.annotated_media_url : currentResultData.raw_media_url;
+      }
+    }
+
+    function resetToUpload() {
+      document.getElementById("resultsSection").classList.add("hidden");
+      document.getElementById("selectedFileBar").classList.add("hidden");
+      selectedFile = null;
+      document.getElementById("mediaFileInput").value = "";
+      document.getElementById("uploadSection").scrollIntoView({ behavior: "smooth" });
+    }
+  </script>
+</body>
+</html>
+

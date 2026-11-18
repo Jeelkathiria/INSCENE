@@ -93,10 +93,10 @@ def is_valid_planar_quad(
     quad: np.ndarray,
     frame_width: int,
     frame_height: int,
-    min_area_fraction: float = 0.015,
-    max_area_fraction: float = 0.65,
-    min_angle: float = 35.0,
-    max_angle: float = 145.0
+    min_area_fraction: float = 0.005,
+    max_area_fraction: float = 0.75,
+    min_angle: float = 30.0,
+    max_angle: float = 150.0
 ) -> Tuple[bool, str]:
     """
     Validates if a 4-point quad is suitable as a planar ad candidate.

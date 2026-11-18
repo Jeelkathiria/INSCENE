@@ -53,11 +53,22 @@ active_jobs: Dict[str, Dict[str, Any]] = {}
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
-    """Serves the main web dashboard interface."""
+    """Serves the landing page interface."""
     index_file = os.path.join(TEMPLATES_DIR, "index.html")
     if not os.path.exists(index_file):
         raise HTTPException(status_code=404, detail="Frontend template index.html not found.")
     with open(index_file, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+
+@app.get("/analyzer", response_class=HTMLResponse)
+@app.get("/app", response_class=HTMLResponse)
+async def serve_analyzer():
+    """Serves the dedicated ad & video upload analyzer workspace."""
+    analyzer_file = os.path.join(TEMPLATES_DIR, "analyzer.html")
+    if not os.path.exists(analyzer_file):
+        analyzer_file = os.path.join(TEMPLATES_DIR, "index.html")
+    with open(analyzer_file, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 
