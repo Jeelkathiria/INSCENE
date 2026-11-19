@@ -371,8 +371,14 @@ class ScoreEngine:
         # Exponential decay for high jitter
         s_stability = 100.0 * math.exp(-motion_jitter / 6.0)
 
-        # 5. Geometric Quality & Orthogonality Score
-        geom_scores = [compute_homography_quality(f.quad) for f in hist]
+        # 5. Geometric Quality & Orthogonality Score (cached per frame snapshot)
+        geom_scores = []
+        for f in hist:
+            g = getattr(f, "geom_score", -1.0)
+            if g < 0.0:
+                g = compute_homography_quality(f.quad)
+                f.geom_score = g
+            geom_scores.append(g)
         mean_geom = float(np.mean(geom_scores)) if geom_scores else 50.0
         s_geometry = mean_geom
 

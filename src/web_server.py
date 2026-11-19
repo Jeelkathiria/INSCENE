@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from src.config import DATA_DIR, BASE_DIR
@@ -40,34 +41,38 @@ app.add_middleware(
 )
 
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 OUTPUTS_DIR = os.path.join(DATA_DIR, "outputs")
 
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Live progress tracking registry
 active_jobs: Dict[str, Dict[str, Any]] = {}
 
 
 @app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    """Serves the landing page interface."""
-    index_file = os.path.join(TEMPLATES_DIR, "index.html")
-    if not os.path.exists(index_file):
-        raise HTTPException(status_code=404, detail="Frontend template index.html not found.")
-    with open(index_file, "r", encoding="utf-8") as f:
+async def serve_landing_page():
+    """Serves the public landing page."""
+    landing_file = os.path.join(TEMPLATES_DIR, "index.html")
+    if not os.path.exists(landing_file):
+        raise HTTPException(status_code=404, detail="Landing page template index.html not found.")
+    with open(landing_file, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 
 @app.get("/analyzer", response_class=HTMLResponse)
 @app.get("/app", response_class=HTMLResponse)
 async def serve_analyzer():
-    """Serves the dedicated ad & video upload analyzer workspace."""
+    """Serves the ad & video upload placement analyzer workspace."""
     analyzer_file = os.path.join(TEMPLATES_DIR, "analyzer.html")
     if not os.path.exists(analyzer_file):
-        analyzer_file = os.path.join(TEMPLATES_DIR, "index.html")
+        raise HTTPException(status_code=404, detail="Analyzer template analyzer.html not found.")
     with open(analyzer_file, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
@@ -263,6 +268,19 @@ async def analyze_photo_upload(file: UploadFile = File(...)):
     except Exception as e:
         logger.error("Photo analysis failed for %s: %s", file.filename, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Photo analysis failed: {str(e)}")
+
+
+@app.get("/static/images/{filename}")
+async def stream_static_image(filename: str):
+    """Streams static asset image."""
+    path = os.path.join(STATIC_DIR, "images", filename)
+    if not os.path.exists(path):
+        path = os.path.join(OUTPUTS_DIR, filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Static image file not found.")
+    ext = os.path.splitext(filename)[1].lower()
+    media_type = "image/png" if ext == ".png" else "image/jpeg"
+    return FileResponse(path, media_type=media_type)
 
 
 @app.get("/media/images/{filename}")

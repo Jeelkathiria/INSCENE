@@ -12,9 +12,13 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 SAMPLES_DIR = os.path.join(DATA_DIR, "samples")
 OUTPUTS_DIR = os.path.join(DATA_DIR, "outputs")
 
+# Direct Ultralytics cache and settings to local workspace data folder to avoid permission errors & disk retries
+os.environ.setdefault("YOLO_CONFIG_DIR", os.path.join(DATA_DIR, ".ultralytics"))
+
 # Create data directories if they don't exist
 os.makedirs(SAMPLES_DIR, exist_ok=True)
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
+os.makedirs(os.path.join(DATA_DIR, ".ultralytics"), exist_ok=True)
 
 
 @dataclass
@@ -34,8 +38,8 @@ class DetectorConfig:
     fallback_model: str = "yolov8n.pt"
     conf_threshold: float = 0.10        # Sensitive enough for distant/angled ad planes and street banners
     iou_threshold: float = 0.45
-    inference_imgsz: int = 640          # High resolution for fine billboard boundaries & facade detection
-    frame_stride: int = 3               # Process every 3rd frame (speeds up video by 3x)
+    inference_imgsz: int = 512          # Optimized balanced resolution for high throughput & sharp boundaries
+    frame_stride: int = 5               # Process keyframe every 5th frame (~6 Hz at 30fps) with continuous track coasting
 
     # Open-vocabulary prompts for candidate planar surfaces & transit ad vehicles
     candidate_classes: List[str] = field(default_factory=lambda: [
@@ -95,10 +99,18 @@ class DetectorConfig:
         "car",
         "automobile",
         "pole",
+        "light pole",
+        "metal pole",
+        "utility pole",
+        "vertical pole",
         "lamp post",
         "street lamp",
+        "lamppost",
+        "pillar",
+        "column",
         "traffic sign",
         "tree branch",
+        "scaffolding pole",
         "umbrella",
         "window",
         "handrail",

@@ -121,12 +121,19 @@ class VideoPlacementPipeline:
 
         # 1. Draw occluders with semi-transparent red overlay
         if occluders:
-            overlay = annotated.copy()
             for occ in occluders:
                 pts = occ.poly.astype(np.int32).reshape((-1, 1, 2))
-                cv2.fillPoly(overlay, [pts], (0, 0, 220))
+                ox1 = max(0, int(np.min(pts[:, 0, 0])))
+                oy1 = max(0, int(np.min(pts[:, 0, 1])))
+                ox2 = min(w, int(np.max(pts[:, 0, 0])) + 1)
+                oy2 = min(h, int(np.max(pts[:, 0, 1])) + 1)
+                if ox2 > ox1 and oy2 > oy1:
+                    oroi = annotated[oy1:oy2, ox1:ox2]
+                    oroi_overlay = oroi.copy()
+                    pts_local = pts - np.array([[[ox1, oy1]]], dtype=np.int32)
+                    cv2.fillPoly(oroi_overlay, [pts_local], (0, 0, 220))
+                    cv2.addWeighted(oroi_overlay, 0.25, oroi, 0.75, 0, oroi)
                 cv2.polylines(annotated, [pts], True, (0, 0, 255), 1, cv2.LINE_AA)
-            cv2.addWeighted(overlay, 0.25, annotated, 0.75, 0, annotated)
 
         # 2. Draw candidate surfaces
         for track in active_tracks:
@@ -154,22 +161,30 @@ class VideoPlacementPipeline:
             # Draw polygon perimeter (Selected Square Boundary)
             cv2.polylines(annotated, [pts], True, color, thickness, cv2.LINE_AA)
 
-            # High-visibility semi-transparent fill for candidate ad canvas
-            cand_overlay = annotated.copy()
-            cv2.fillPoly(cand_overlay, [pts], color)
-            cv2.addWeighted(cand_overlay, fill_alpha, annotated, 1.0 - fill_alpha, 0, annotated)
-
-            # 3D Perspective Grid Mesh (projectively interpolated cross-sections conforming to depth)
+            # High-visibility semi-transparent fill and 3D Perspective Grid using fast local ROI blending
+            rx1 = max(0, int(np.min(quad[:, 0])))
+            ry1 = max(0, int(np.min(quad[:, 1])))
+            rx2 = min(w, int(np.max(quad[:, 0])) + 1)
+            ry2 = min(h, int(np.max(quad[:, 1])) + 1)
             p1, p2, p3, p4 = track.current_quad[0], track.current_quad[1], track.current_quad[2], track.current_quad[3]
-            grid_overlay = annotated.copy()
-            for t in [0.33, 0.67]:
-                pt_top = p1 * (1 - t) + p2 * t
-                pt_bot = p4 * (1 - t) + p3 * t
-                cv2.line(grid_overlay, (int(pt_top[0]), int(pt_top[1])), (int(pt_bot[0]), int(pt_bot[1])), (255, 255, 255), 1, cv2.LINE_AA)
-                pt_l = p1 * (1 - t) + p4 * t
-                pt_r = p2 * (1 - t) + p3 * t
-                cv2.line(grid_overlay, (int(pt_l[0]), int(pt_l[1])), (int(pt_r[0]), int(pt_r[1])), (255, 255, 255), 1, cv2.LINE_AA)
-            cv2.addWeighted(grid_overlay, 0.35, annotated, 0.65, 0, annotated)
+            if rx2 > rx1 and ry2 > ry1:
+                roi = annotated[ry1:ry2, rx1:rx2]
+                roi_overlay = roi.copy()
+                offset = np.array([[[rx1, ry1]]], dtype=np.int32)
+                pts_local = pts - offset
+                cv2.fillPoly(roi_overlay, [pts_local], color)
+
+                # 3D Perspective Grid Mesh
+                roiff = np.array([rx1, ry1], dtype=np.float32)
+                for t in [0.33, 0.67]:
+                    pt_top = p1 * (1 - t) + p2 * t - roiff
+                    pt_bot = p4 * (1 - t) + p3 * t - roiff
+                    cv2.line(roi_overlay, (int(pt_top[0]), int(pt_top[1])), (int(pt_bot[0]), int(pt_bot[1])), (255, 255, 255), 1, cv2.LINE_AA)
+                    pt_l = p1 * (1 - t) + p4 * t - roiff
+                    pt_r = p2 * (1 - t) + p3 * t - roiff
+                    cv2.line(roi_overlay, (int(pt_l[0]), int(pt_l[1])), (int(pt_r[0]), int(pt_r[1])), (255, 255, 255), 1, cv2.LINE_AA)
+
+                cv2.addWeighted(roi_overlay, fill_alpha, roi, 1.0 - fill_alpha, 0, roi)
 
             # Draw center label inside selected ad square
             cx = int(np.mean(quad[:, 0]))
@@ -340,7 +355,7 @@ class VideoPlacementPipeline:
                 if progress_callback:
                     # Generate lightweight preview thumbnail for live UI visualizer
                     preview_b64 = None
-                    if frame_idx % 2 == 0 or frame_idx == total_frames - 1:
+                    if frame_idx % 5 == 0 or frame_idx == total_frames - 1:
                         try:
                             thumb = cv2.resize(annotated_frame, (320, 180))
                             _, buf = cv2.imencode(".jpg", thumb, [cv2.IMWRITE_JPEG_QUALITY, 55])

@@ -1,11 +1,44 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
+*.pyo
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Unit test / coverage
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.venv/
-venv/
-data/
+.coverage
+htmlcov/
+
+# Runtime Generated Data (preserve directory structure via .gitkeep)
+data/outputs/*
+!data/outputs/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+data/.ultralytics/
+
+# Temporary / Scratch files
 scratch/
 *.bak
-
+*.tmp
+*.swp
+*.log
+.DS_Store
+Thumbs.db

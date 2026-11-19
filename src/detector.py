@@ -88,8 +88,8 @@ class SurfaceDetector:
                 logger.warning("Could not load fallback model: %s. Using classical detector.", e2)
                 self.model = None
                 self.model_type = "classical"
-        except ImportError:
-            logger.warning("Ultralytics library not available. Using classical detector.")
+        except (ImportError, Exception) as e:
+            logger.warning("Could not initialize neural detector (%s). Using classical detector.", e)
             self.model = None
             self.model_type = "classical"
 
@@ -568,6 +568,102 @@ class SurfaceDetector:
             return True
         return False
 
+    def detect_slender_occluders(
+        self,
+        frame: np.ndarray,
+        quad: np.ndarray
+    ) -> List[np.ndarray]:
+        """
+        Detects thin foreground occluders (such as streetlight poles, utility poles,
+        posts, columns, wires, and tree branches) that pass directly in front of a
+        planar candidate surface and might be missed by object detection bounding boxes.
+        """
+        if frame is None or frame.size == 0:
+            return []
+
+        fh, fw = frame.shape[:2]
+        qw = int(max(np.linalg.norm(quad[1] - quad[0]), np.linalg.norm(quad[2] - quad[3])))
+        qh = int(max(np.linalg.norm(quad[3] - quad[0]), np.linalg.norm(quad[2] - quad[1])))
+        if qw < 30 or qh < 30:
+            return []
+
+        dst = np.array([[0, 0], [qw, 0], [qw, qh], [0, qh]], dtype=np.float32)
+        try:
+            M = cv2.getPerspectiveTransform(quad, dst)
+            M_inv = cv2.getPerspectiveTransform(dst, quad)
+            warped = cv2.warpPerspective(frame, M, (qw, qh))
+        except Exception:
+            return []
+
+        med_bgr = np.median(warped.reshape(-1, 3), axis=0)
+        diff = np.linalg.norm(warped.astype(float) - med_bgr, axis=2)
+
+        is_diff = (diff > 35.0)
+        frac_vertical = np.mean(is_diff, axis=0)
+        touches_top = np.any(is_diff[:12, :], axis=0)
+        touches_bot = np.any(is_diff[-12:, :], axis=0)
+
+        up_dir = (quad[0] - quad[3]) / max(1e-5, np.linalg.norm(quad[0] - quad[3]))
+        down_dir = -up_dir
+
+        margin_x = max(3, int(qw * 0.06))
+        matched_cols = np.zeros(qw, dtype=bool)
+
+        for x in range(margin_x, qw - margin_x):
+            if frac_vertical[x] > 0.65 and (touches_top[x] or touches_bot[x]):
+                t = x / float(qw)
+                pt_top = quad[0] * (1 - t) + quad[1] * t
+                pt_bot = quad[3] * (1 - t) + quad[2] * t
+
+                p_ab1 = (pt_top + up_dir * 10).astype(int)
+                p_ab2 = (pt_top + up_dir * 20).astype(int)
+                p_bl1 = (pt_bot + down_dir * 10).astype(int)
+                p_bl2 = (pt_bot + down_dir * 20).astype(int)
+
+                c_in = np.median(warped[qh // 4: 3 * qh // 4, x], axis=0).astype(float)
+
+                d_ab = 999.0
+                if 0 <= p_ab1[0] < fw and 0 <= p_ab1[1] < fh:
+                    d_ab = min(d_ab, float(np.linalg.norm(c_in - frame[p_ab1[1], p_ab1[0]].astype(float))))
+                if 0 <= p_ab2[0] < fw and 0 <= p_ab2[1] < fh:
+                    d_ab = min(d_ab, float(np.linalg.norm(c_in - frame[p_ab2[1], p_ab2[0]].astype(float))))
+
+                d_bl = 999.0
+                if 0 <= p_bl1[0] < fw and 0 <= p_bl1[1] < fh:
+                    d_bl = min(d_bl, float(np.linalg.norm(c_in - frame[p_bl1[1], p_bl1[0]].astype(float))))
+                if 0 <= p_bl2[0] < fw and 0 <= p_bl2[1] < fh:
+                    d_bl = min(d_bl, float(np.linalg.norm(c_in - frame[p_bl2[1], p_bl2[0]].astype(float))))
+
+                if d_ab < 40.0 or d_bl < 45.0 or (frac_vertical[x] > 0.85 and touches_top[x] and touches_bot[x]):
+                    matched_cols[x] = True
+
+        intervals = []
+        in_run = False
+        start_x = 0
+        for x in range(qw):
+            if matched_cols[x] and not in_run:
+                in_run = True
+                start_x = x
+            elif not matched_cols[x] and in_run:
+                in_run = False
+                run_w = x - start_x
+                if 2 <= run_w <= int(qw * 0.40):
+                    intervals.append((start_x, x))
+        if in_run:
+            run_w = qw - start_x
+            if 2 <= run_w <= int(qw * 0.40):
+                intervals.append((start_x, qw))
+
+        polys = []
+        for sx, ex in intervals:
+            pts_w = np.array([
+                [sx, 0], [ex, 0], [ex, qh], [sx, qh]
+            ], dtype=np.float32).reshape(-1, 1, 2)
+            pts_f = cv2.perspectiveTransform(pts_w, M_inv).reshape(-1, 2)
+            polys.append(pts_f)
+
+        return polys
+
     def detect_classical(self, frame: np.ndarray) -> Tuple[List[CandidateDetection], List[OccluderDetection]]:
         """
         Model-free classical detection: uses bilateral filtering, adaptive Canny edge detection,
@@ -628,7 +724,22 @@ class SurfaceDetector:
                 confidence=0.90
             ))
 
-        return candidates, []
+        occluders: List[OccluderDetection] = []
+        for cand in candidates:
+            slender_polys = self.detect_slender_occluders(frame, cand.quad)
+            for spoly in slender_polys:
+                sx1 = int(np.min(spoly[:, 0]))
+                sy1 = int(np.min(spoly[:, 1]))
+                sx2 = int(np.max(spoly[:, 0]))
+                sy2 = int(np.max(spoly[:, 1]))
+                occluders.append(OccluderDetection(
+                    bbox=(sx1, sy1, sx2, sy2),
+                    poly=spoly,
+                    class_name="light pole / foreground occluder",
+                    confidence=0.88
+                ))
+
+        return candidates, occluders
 
     def detect(self, frame: np.ndarray) -> Tuple[List[CandidateDetection], List[OccluderDetection]]:
         """
@@ -948,6 +1059,22 @@ class SurfaceDetector:
                 if keep:
                     deduped.append(cand)
             candidates = deduped
+
+        # In-canvas intrusion detection: detect slender poles, posts, and foreground occluders
+        if candidates and frame is not None:
+            for cand in candidates:
+                slender_polys = self.detect_slender_occluders(frame, cand.quad)
+                for spoly in slender_polys:
+                    sx1 = int(np.min(spoly[:, 0]))
+                    sy1 = int(np.min(spoly[:, 1]))
+                    sx2 = int(np.max(spoly[:, 0]))
+                    sy2 = int(np.max(spoly[:, 1]))
+                    occluders.append(OccluderDetection(
+                        bbox=(sx1, sy1, sx2, sy2),
+                        poly=spoly,
+                        class_name="light pole / foreground occluder",
+                        confidence=0.88
+                    ))
 
         return candidates, occluders
 

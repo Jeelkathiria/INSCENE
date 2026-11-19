@@ -77,6 +77,48 @@ def run_single_video(video_path: str, save_annotated: bool = True):
         print(f" - Annotated MP4 Video: {out_video}")
 
 
+def run_single_photo(photo_path: str, save_annotated: bool = True):
+    """Processes a photo/still image and prints ranked 3D planar ad space candidates."""
+    if not os.path.exists(photo_path):
+        logger.error("Photo file does not exist: %s", photo_path)
+        return
+
+    logger.info("Processing photo: %s", photo_path)
+    base_name = os.path.splitext(os.path.basename(photo_path))[0]
+    out_img = os.path.join(OUTPUTS_DIR, f"{base_name}_annotated.jpg") if save_annotated else None
+
+    pipeline = VideoPlacementPipeline()
+    ranked_candidates, exports = pipeline.process_image(photo_path, out_img)
+
+    logger.info("=== TOP 3D PLANAR AD SPACES IDENTIFIED ===")
+    table_rows = []
+    for c in ranked_candidates:
+        table_rows.append([
+            f"#{c.get('rank', 1)}",
+            c.get('class_name', 'ad surface').upper(),
+            f"{c.get('final_score', 0):.1f}",
+            f"{c.get('mean_area_pct', 0):.1f}%",
+            f"{c.get('mean_occlusion_pct', 0):.1f}%",
+            c.get('dimensions_wh', '--'),
+            c.get('position_xy', '--')
+        ])
+
+    headers = ["Rank", "Surface Type", "Score / 100", "Area %", "Occlusion %", "Dimensions", "Position"]
+    try:
+        from tabulate import tabulate
+        print(tabulate(table_rows, headers=headers, tablefmt="fancy_grid"))
+    except ImportError:
+        header_str = " | ".join(f"{h:<14}" for h in headers)
+        print(header_str)
+        print("-" * len(header_str))
+        for row in table_rows:
+            print(" | ".join(f"{str(cell):<14}" for cell in row))
+
+    print(f"\nArtifacts Saved:\n - JSON Report: {exports['json']}\n - CSV Report:  {exports['csv']}")
+    if out_img and os.path.exists(out_img):
+        print(f" - Annotated Image: {out_img}")
+
+
 def run_benchmark_all_test_cases():
     """
     Executes and benchmarks all 5 test scenarios from Slide 10:
@@ -139,6 +181,7 @@ def main():
     parser.add_argument("--generate-samples", action="store_true", help="Generate synthetic test videos")
     parser.add_argument("--test-all", action="store_true", help="Run benchmark on all 5 test scenarios")
     parser.add_argument("--video", type=str, default="", help="Path to input video for headless analysis")
+    parser.add_argument("--photo", type=str, default="", help="Path to input photo for 3D planar ad space extraction")
 
     args = parser.parse_args()
 
@@ -162,6 +205,8 @@ def main():
         run_benchmark_all_test_cases()
     elif args.video:
         run_single_video(args.video)
+    elif args.photo:
+        run_single_photo(args.photo)
 
 
 if __name__ == "__main__":

@@ -99,3 +99,38 @@ def test_score_engine_preferences():
     assert score_ideal.is_recommended is True
     assert score_poor.is_recommended is False
 
+
+def test_slender_pole_occlusion_detection():
+    """
+    Validates that in-canvas slender foreground occluders (such as street poles)
+    are successfully detected, mapped into occluder polygons, and penalized.
+    """
+    import cv2
+    from src.detector import SurfaceDetector
+
+    # Create synthetic frame with dark billboard
+    frame = np.full((500, 500, 3), 180, dtype=np.uint8)  # Light background/sky
+    # Dark billboard quad from x=100 to 300, y=100 to 300
+    frame[100:300, 100:300] = [40, 40, 40]
+    quad = np.array([[100, 100], [300, 100], [300, 300], [100, 300]], dtype=np.float32)
+
+    # Draw vertical green pole at x=190..205 traversing from y=50 to y=350
+    frame[50:350, 192:206] = [70, 160, 130]
+
+    cfg = SystemConfig()
+    detector = SurfaceDetector(cfg.detector, cfg.geometry)
+
+    polys = detector.detect_slender_occluders(frame, quad)
+    assert len(polys) >= 1, "Should detect slender pole crossing the billboard"
+
+    ratio, _ = compute_occlusion_ratio(quad, polys, (500, 500))
+    # Expected ratio ~14px / 200px = ~7%
+    assert 0.04 <= ratio <= 0.12, f"Expected occlusion ratio ~7%, got {ratio*100:.1f}%"
+
+    # Verify that a clean billboard without pole returns 0 occluders
+    clean_frame = np.full((500, 500, 3), 180, dtype=np.uint8)
+    clean_frame[100:300, 100:300] = [40, 40, 40]
+    clean_polys = detector.detect_slender_occluders(clean_frame, quad)
+    assert len(clean_polys) == 0, "Clean billboard should have 0 slender occluders"
+
+
