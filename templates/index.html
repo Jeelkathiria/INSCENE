@@ -381,8 +381,8 @@
                         </a>
                         <a href="#simulator"
                             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/5 border border-white/10 text-zinc-300 font-semibold text-sm hover:text-white hover:bg-white/10 hover:border-lime-400/30 transition-all duration-200">
-                            <i data-lucide="sliders" class="w-4 h-4 text-lime-400"></i>
-                            <span>Interact With Simulator</span>
+                            <i data-lucide="sparkles" class="w-4 h-4 text-lime-400"></i>
+                            <span>Explore In-Scene Studio</span>
                         </a>
                     </div>
 
@@ -407,8 +407,8 @@
                     </div>
                 </div>
 
-                <!-- Right Column: THE REPLACEMENT INTERACTIVE SIMULATOR (7 cols) -->
-                <!-- REPLACES the static building mockup screenshot from the prompt with a live, interactive 3D homography sandbox -->
+                <!-- Right Column: CINEMATIC IN-SCENE AI STUDIO (7 cols) -->
+                <!-- Ultra-aesthetic, interactive Before/After comparison & 3D Computer Vision cockpit -->
                 <div id="simulator" class="lg:col-span-7 framer-reveal">
                     <div
                         class="glass-card spotlight-card rounded-3xl p-4 sm:p-6 border border-white/10 shadow-2xl relative overflow-hidden">
@@ -422,8 +422,8 @@
                                     <span class="w-2 h-2 rounded-full bg-lime-400 animate-ping"></span>
                                     <span>LIVE CAM_01</span>
                                 </span>
-                                <span id="hudFrameCounter" class="font-mono text-xs text-zinc-400 tracking-wider">FRAME
-                                    0382 / 1200</span>
+                                <span id="hudFrameCounter" class="font-mono text-xs text-zinc-400 tracking-wider">FRAME 0382 / 1200</span>
+                                <span class="hidden sm:inline-block px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-[10px] text-zinc-400">4K UHD · 60 FPS</span>
                             </div>
 
                             <!-- Visual Mode Switcher (Ad Blend / CV Mesh / Occlusion / Heatmap) -->
@@ -442,32 +442,26 @@
                             </div>
                         </div>
 
-                        <!-- Interactive Canvas Viewport (Scene with 4 Draggable Corner Pins) -->
-                        <div class="relative w-full h-[360px] sm:h-[420px] rounded-2xl bg-ink-950 border border-white/10 overflow-hidden shadow-inner select-none"
+                        <!-- Interactive Canvas Viewport (Scene with Draggable Split Curtain) -->
+                        <div class="relative w-full h-[380px] sm:h-[430px] rounded-2xl bg-ink-950 border border-white/10 overflow-hidden shadow-inner select-none cursor-ew-resize"
                             id="viewportContainer">
 
                             <!-- Scanline animation -->
-                            <div class="scan-line"></div>
+                            <div class="scan-line pointer-events-none"></div>
 
                             <!-- Main Simulation Canvas -->
-                            <canvas id="simCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                            <canvas id="simCanvas" class="w-full h-full block"></canvas>
 
-                            <!-- 4 Draggable Interactive Corner Handles (Framer Spring & Drag) -->
-                            <div id="pin0" class="corner-pin" title="Corner P1 (Top-Left)"><span></span></div>
-                            <div id="pin1" class="corner-pin" title="Corner P2 (Top-Right)"><span></span></div>
-                            <div id="pin2" class="corner-pin" title="Corner P3 (Bottom-Right)"><span></span></div>
-                            <div id="pin3" class="corner-pin" title="Corner P4 (Bottom-Left)"><span></span></div>
-
-                            <!-- Floating Telemetry HUD: Top Left -->
+                            <!-- Floating Telemetry HUD: Top Left (Dynamic State Indicator) -->
                             <div class="absolute top-4 left-4 z-10 pointer-events-none flex flex-col gap-1.5">
-                                <span
+                                <span id="hudLeftModeBadge"
                                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/10 font-mono text-[10px] text-lime-400 uppercase tracking-wider">
                                     <i data-lucide="scan" class="w-3 h-3"></i>
-                                    <span>PERSPECTIVE LOCKED · QUAD-01</span>
+                                    <span>3D PLANAR SURFACE DETECTED</span>
                                 </span>
                                 <span
                                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/10 font-mono text-[10px] text-zinc-400">
-                                    <span class="text-zinc-500">CLASS:</span> BUILDING_FACADE
+                                    <span class="text-zinc-500">CLASS:</span> DIGITAL_BILLBOARD (RANSAC LOCKED)
                                 </span>
                             </div>
 
@@ -487,7 +481,7 @@
                                 </div>
                             </div>
 
-                            <!-- Floating Placement Score Card: Bottom Right (Directly replacing the old 86.4 score card with dynamic reactive physics) -->
+                            <!-- Floating Placement Score Card: Bottom Right -->
                             <div class="absolute bottom-4 right-4 z-10 pointer-events-auto">
                                 <div
                                     class="p-3.5 sm:p-4 rounded-2xl bg-black/85 backdrop-blur-xl border border-lime-400/30 shadow-[0_12px_40px_rgba(0,0,0,0.7)] flex flex-col w-[190px] sm:w-[210px] transition-all">
@@ -499,7 +493,7 @@
 
                                     <div class="flex items-baseline gap-2 mb-2">
                                         <span id="hudFinalScore"
-                                            class="text-3xl font-display font-extrabold text-white tracking-tight">92.4</span>
+                                            class="text-3xl font-display font-extrabold text-white tracking-tight">96.4</span>
                                         <span class="text-xs font-mono text-zinc-500">/ 100</span>
                                         <span
                                             class="ml-auto px-1.5 py-0.5 rounded bg-lime-400/20 text-lime-400 font-mono text-[9px] font-bold">OPTIMAL</span>
@@ -509,26 +503,26 @@
                                     <div class="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden mb-3">
                                         <div id="hudScoreBar"
                                             class="h-full bg-gradient-to-r from-lime-400 to-cyan-400 rounded-full transition-all duration-300"
-                                            style="width: 92.4%"></div>
+                                            style="width: 96.4%"></div>
                                     </div>
 
                                     <!-- Mini Metric Factor Breakdown -->
                                     <div
                                         class="grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] font-mono text-zinc-400 border-t border-white/10 pt-2">
                                         <div>AREA: <span id="hudAreaScore" class="text-zinc-200">18.4%</span></div>
-                                        <div>STABILITY: <span id="hudStabScore" class="text-zinc-200">96.5</span></div>
+                                        <div>STABILITY: <span id="hudStabScore" class="text-zinc-200">98.8</span></div>
                                         <div>OCCLUSION: <span id="hudOcclScore" class="text-emerald-400">0.0%</span>
                                         </div>
-                                        <div>GEOMETRY: <span id="hudGeomScore" class="text-zinc-200">94.2</span></div>
+                                        <div>GEOMETRY: <span id="hudGeomScore" class="text-zinc-200">97.2</span></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Interactive Drag Instruction Toast -->
+                            <!-- Floating Draggable Slider Instruction Pill (Bottom Left) -->
                             <div
-                                class="absolute bottom-4 left-4 z-10 pointer-events-none hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 font-mono text-[10px] text-zinc-400">
-                                <i data-lucide="hand" class="w-3.5 h-3.5 text-lime-400 animate-bounce"></i>
-                                <span>Drag any corner pin to adjust planar quad</span>
+                                class="absolute bottom-4 left-4 z-10 pointer-events-none hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/75 backdrop-blur-md border border-white/10 font-mono text-[10px] text-zinc-300">
+                                <i data-lucide="split" class="w-3.5 h-3.5 text-lime-400 animate-pulse"></i>
+                                <span>Drag slider to compare: <strong class="text-white">Raw Scene</strong> vs <strong class="text-lime-400">AI Blend</strong></span>
                             </div>
 
                         </div>
@@ -545,27 +539,26 @@
                                 <div
                                     class="inline-flex p-1 rounded-xl bg-ink-950 border border-white/10 text-xs font-mono">
                                     <button onclick="setAdCreative(0)" id="adBtn0"
-                                        class="px-2.5 py-1 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-all">NEO//PULSE</button>
+                                        class="px-2.5 py-1 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-all">CYBER//PULSE</button>
                                     <button onclick="setAdCreative(1)" id="adBtn1"
-                                        class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition-all">HYPERION</button>
+                                        class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition-all">HYPERION GT</button>
                                     <button onclick="setAdCreative(2)" id="adBtn2"
-                                        class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition-all">AURA
-                                        AUDIO</button>
+                                        class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition-all">AURA TITANIUM</button>
                                 </div>
                             </div>
 
-                            <!-- Camera Pan & Reset Buttons -->
+                            <!-- Motion & Split Reset Buttons -->
                             <div class="flex items-center gap-2">
                                 <button onclick="toggleCameraMotion()" id="camMotionBtn"
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ink-950 border border-white/10 text-xs font-mono text-zinc-300 hover:text-white hover:border-lime-400/40 transition-all">
                                     <i data-lucide="play" id="camMotionIcon" class="w-3.5 h-3.5 text-lime-400"></i>
-                                    <span id="camMotionText">Simulate Motion</span>
+                                    <span id="camMotionText">Auto-Sweep</span>
                                 </button>
                                 <button onclick="resetQuadPins()"
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-ink-950 border border-white/10 text-xs font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-all"
-                                    title="Reset quad to default points">
+                                    title="Reset comparison slider to 50%">
                                     <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                                    <span>Reset</span>
+                                    <span>Center Split</span>
                                 </button>
                             </div>
 
@@ -1744,178 +1737,326 @@ python main.py --server --port 8000</code></pre>
         });
 
         // -------------------------------------------------------------
-        // THE INTERACTIVE VISION SIMULATOR (Canvas + Quad Warping)
+        // -------------------------------------------------------------
+        // CINEMATIC IN-SCENE AI STUDIO ENGINE (Dual Before/After + 3D Vision)
         // -------------------------------------------------------------
         const canvas = document.getElementById('simCanvas');
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('viewportContainer');
 
-        // Default Quad Coordinates (Normalized 0.0 to 1.0)
-        let quadNorm = [
-            { x: 0.28, y: 0.22 }, // P0: Top-Left
-            { x: 0.74, y: 0.16 }, // P1: Top-Right
-            { x: 0.82, y: 0.76 }, // P2: Bottom-Right
-            { x: 0.22, y: 0.82 }  // P3: Bottom-Left
+        // Pristine Architectural 3D Perspective Billboard Quad Coordinates (Normalized 0.0 to 1.0)
+        const defaultQuad = [
+            { x: 0.27, y: 0.20 }, // P0: Top-Left
+            { x: 0.77, y: 0.15 }, // P1: Top-Right
+            { x: 0.85, y: 0.78 }, // P2: Bottom-Right
+            { x: 0.21, y: 0.84 }  // P3: Bottom-Left
         ];
-
-        let defaultQuad = [
-            { x: 0.28, y: 0.22 },
-            { x: 0.74, y: 0.16 },
-            { x: 0.82, y: 0.76 },
-            { x: 0.22, y: 0.82 }
-        ];
-
-        let pins = [
-            document.getElementById('pin0'),
-            document.getElementById('pin1'),
-            document.getElementById('pin2'),
-            document.getElementById('pin3')
-        ];
+        let quadNorm = JSON.parse(JSON.stringify(defaultQuad));
 
         let simMode = 'blend'; // 'blend', 'mesh', 'occlusion', 'heatmap'
         let activeCreative = 0; // 0, 1, 2
-        let isSimulatingMotion = false;
-        let motionFrame = 382;
+        let splitRatio = 0.50; // 0.0 to 1.0 (Divider position)
+        let isDraggingSplit = false;
+        let isAutoSweeping = false;
+        let sweepAngle = 0;
         let motionAnimId = null;
+        let frameTicker = 382;
 
-        // Ad Creatives Definition (Procedurally generated visual ad textures)
+        // Premium Brand Creatives
         const adCreatives = [
-            { name: "NEO//PULSE", color1: "#06b6d4", color2: "#3b82f6", tag: "SYNTHETIC SOUNDSCAPE", accent: "#c6f36a" },
-            { name: "HYPERION", color1: "#8b5cf6", color2: "#ec4899", tag: "VELOCITY ELECTRIC HYPERCAR", accent: "#38bdf8" },
-            { name: "AURA PRO", color1: "#10b981", color2: "#059669", tag: "SPATIAL TITANIUM AUDIO", accent: "#facc15" }
+            {
+                name: "CYBER//PULSE",
+                tag: "SPATIAL HOLOGRAPHIC AUDIO",
+                color1: "#06b6d4",
+                color2: "#3b82f6",
+                accent: "#c6f36a",
+                bgDark: "#021024",
+                specular: 0.35
+            },
+            {
+                name: "HYPERION GT",
+                tag: "ELECTRIC PERFORMANCE ALL-WHEEL",
+                color1: "#8b5cf6",
+                color2: "#ec4899",
+                accent: "#38bdf8",
+                bgDark: "#1a0429",
+                specular: 0.42
+            },
+            {
+                name: "AURA TITANIUM",
+                tag: "SPATIAL COMPUTING EYEWEAR",
+                color1: "#10b981",
+                color2: "#059669",
+                accent: "#facc15",
+                bgDark: "#022013",
+                specular: 0.38
+            }
         ];
 
         function resizeCanvas() {
+            if (!container || !canvas) return;
             const rect = container.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
             ctx.resetTransform();
             ctx.scale(dpr, dpr);
-            updatePinPositions();
             renderSimulation();
         }
 
-        function getPixelQuad() {
-            const rect = container.getBoundingClientRect();
+        // Get pixel coordinates from normalized quad
+        function getPixelQuad(width, height) {
             return quadNorm.map(p => ({
-                x: p.x * rect.width,
-                y: p.y * rect.height
+                x: p.x * width,
+                y: p.y * height
             }));
         }
 
-        function updatePinPositions() {
-            const rect = container.getBoundingClientRect();
-            quadNorm.forEach((p, idx) => {
-                pins[idx].style.left = `${p.x * rect.width}px`;
-                pins[idx].style.top = `${p.y * rect.height}px`;
+        // -------------------------------------------------------------
+        // DRAW CINEMATIC CITYSCAPE & ARCHITECTURAL BILLBOARD BACKDROP
+        // -------------------------------------------------------------
+        function drawCinematicBackdrop(w, h) {
+            // 1. Cosmic Twilight Sky Gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.75);
+            skyGrad.addColorStop(0, '#060913');
+            skyGrad.addColorStop(0.45, '#0b1326');
+            skyGrad.addColorStop(0.85, '#121f38');
+            skyGrad.addColorStop(1, '#1a1829');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            // 2. Distant Metropolitan Skyline Silhouettes with Lit Windows
+            const horizonY = h * 0.70;
+
+            const towers = [
+                { x: 0.02, w: 0.08, h: 0.52 },
+                { x: 0.11, w: 0.06, h: 0.42 },
+                { x: 0.18, w: 0.09, h: 0.58 },
+                { x: 0.81, w: 0.07, h: 0.50 },
+                { x: 0.89, w: 0.09, h: 0.44 }
+            ];
+
+            ctx.fillStyle = '#0a101d';
+            towers.forEach(tw => {
+                const bx = tw.x * w;
+                const bw = tw.w * w;
+                const bh = tw.h * h;
+                const by = horizonY - bh;
+                ctx.fillRect(bx, by, bw, bh + h * 0.3);
+
+                // Flashing beacon antenna on tower top
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(bx + bw * 0.5, by);
+                ctx.lineTo(bx + bw * 0.5, by - 16);
+                ctx.stroke();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(bx + bw * 0.5, by - 16, 1.5, 0, Math.PI * 2);
+                ctx.fill();
             });
-        }
 
-        // Drag-and-Drop Interaction for 4 Corner Pins
-        let draggingPinIdx = -1;
+            // Midground skyscraper layer
+            const midBuildings = [
+                { x: 0.00, w: 0.22, h: 0.65 },
+                { x: 0.79, w: 0.21, h: 0.68 }
+            ];
 
-        pins.forEach((pin, idx) => {
-            pin.addEventListener('pointerdown', (e) => {
-                draggingPinIdx = idx;
-                pin.setPointerCapture(e.pointerId);
-                e.preventDefault();
-            });
+            midBuildings.forEach(mb => {
+                const bx = mb.x * w;
+                const bw = mb.w * w;
+                const bh = mb.h * h;
+                const by = horizonY - bh;
 
-            pin.addEventListener('pointermove', (e) => {
-                if (draggingPinIdx !== idx) return;
-                const rect = container.getBoundingClientRect();
-                const clientX = e.clientX - rect.left;
-                const clientY = e.clientY - rect.top;
+                const bGrad = ctx.createLinearGradient(bx, by, bx + bw, by);
+                bGrad.addColorStop(0, '#0c1424');
+                bGrad.addColorStop(1, '#080d18');
+                ctx.fillStyle = bGrad;
+                ctx.fillRect(bx, by, bw, bh + h * 0.3);
 
-                // Clamp to container bounds
-                quadNorm[idx].x = Math.max(0.05, Math.min(0.95, clientX / rect.width));
-                quadNorm[idx].y = Math.max(0.05, Math.min(0.95, clientY / rect.height));
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(bx, by, bw, bh + h * 0.3);
 
-                updatePinPositions();
-                recalculatePlacementTelemetry();
-                renderSimulation();
-            });
+                // Grid of glowing office windows
+                const winRows = 16;
+                const winCols = 5;
+                const winW = (bw - 24) / winCols;
+                const winH = (bh - 40) / winRows;
 
-            pin.addEventListener('pointerup', (e) => {
-                if (draggingPinIdx === idx) {
-                    pin.releasePointerCapture(e.pointerId);
-                    draggingPinIdx = -1;
+                for (let r = 0; r < winRows; r++) {
+                    for (let c = 0; c < winCols; c++) {
+                        const seed = (r * 17 + c * 31 + Math.round(mb.x * 100)) % 10;
+                        if (seed > 4) {
+                            ctx.fillStyle = seed > 7 ? 'rgba(56, 189, 248, 0.45)' : 'rgba(253, 224, 71, 0.32)';
+                            ctx.fillRect(bx + 12 + c * winW, by + 16 + r * winH, winW * 0.6, winH * 0.5);
+                        }
+                    }
                 }
             });
-        });
 
-        // Draw Simulated Architectural Scene Background
-        function drawSceneBackground(width, height) {
-            // Midnight urban atmosphere
-            const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-            bgGrad.addColorStop(0, '#0c0f0e');
-            bgGrad.addColorStop(0.5, '#121614');
-            bgGrad.addColorStop(1, '#070908');
-            ctx.fillStyle = bgGrad;
-            ctx.fillRect(0, 0, width, height);
+            // 3. Ground Plane & Perspective Vanishing Highway
+            const groundGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+            groundGrad.addColorStop(0, '#0a0d14');
+            groundGrad.addColorStop(0.5, '#07090f');
+            groundGrad.addColorStop(1, '#040508');
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, horizonY, w, h - horizonY);
 
-            // Distant city perspective grid lines
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
             ctx.lineWidth = 1;
+            const vpX = w * 0.50;
+            const vpY = horizonY;
 
-            // Perspective vanishing point towards horizon
-            const vpX = width * 0.52;
-            const vpY = height * 0.42;
-
-            for (let x = -width * 0.5; x <= width * 1.5; x += width * 0.12) {
+            for (let lx = -w * 0.2; lx <= w * 1.2; lx += w * 0.10) {
                 ctx.beginPath();
-                ctx.moveTo(x, height);
-                ctx.lineTo(vpX, vpY);
+                ctx.moveTo(vpX, vpY);
+                ctx.lineTo(lx, h);
                 ctx.stroke();
             }
 
-            // Horizontal ground plane lines
-            for (let y = height * 0.55; y <= height; y += height * 0.08) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(width, y);
-                ctx.stroke();
-            }
+            // Roadway ambient neon light reflections
+            const roadGlow = ctx.createRadialGradient(w * 0.5, h * 0.88, 10, w * 0.5, h * 0.88, w * 0.4);
+            roadGlow.addColorStop(0, 'rgba(198, 243, 106, 0.08)');
+            roadGlow.addColorStop(0.6, 'rgba(56, 189, 248, 0.04)');
+            roadGlow.addColorStop(1, 'transparent');
+            ctx.fillStyle = roadGlow;
+            ctx.fillRect(0, horizonY, w, h - horizonY);
 
-            // Architectural facade blocks in background
-            ctx.fillStyle = '#171c18';
+            // 4. Structural Steel Truss Brackets Mounting the Billboard
+            const p = getPixelQuad(w, h);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 2;
+
             ctx.beginPath();
-            ctx.moveTo(0, height * 0.3);
-            ctx.lineTo(width * 0.22, height * 0.25);
-            ctx.lineTo(width * 0.22, height);
-            ctx.lineTo(0, height);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(p[3].x + 20, p[3].y);
+            ctx.lineTo(p[3].x + 20, h * 0.95);
+            ctx.moveTo(p[2].x - 20, p[2].y);
+            ctx.lineTo(p[2].x - 20, h * 0.95);
+            ctx.stroke();
+
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-            ctx.stroke();
-
-            // Right facade block
-            ctx.fillStyle = '#141815';
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(width * 0.85, height * 0.2);
-            ctx.lineTo(width, height * 0.15);
-            ctx.lineTo(width, height);
-            ctx.lineTo(width * 0.85, height);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(p[3].x + 20, p[3].y + 30);
+            ctx.lineTo(p[2].x - 20, p[3].y + 70);
+            ctx.moveTo(p[2].x - 20, p[3].y + 30);
+            ctx.lineTo(p[3].x + 20, p[3].y + 70);
             ctx.stroke();
 
-            // Atmospheric spotlight glow behind the billboard
-            const spotGlow = ctx.createRadialGradient(width * 0.5, height * 0.45, 20, width * 0.5, height * 0.45, width * 0.45);
-            spotGlow.addColorStop(0, 'rgba(198, 243, 106, 0.07)');
-            spotGlow.addColorStop(0.5, 'rgba(56, 189, 248, 0.03)');
-            spotGlow.addColorStop(1, 'transparent');
-            ctx.fillStyle = spotGlow;
-            ctx.fillRect(0, 0, width, height);
+            // Uplighting floodlight glow on billboard
+            const spotLight = ctx.createRadialGradient(w * 0.52, h * 0.50, 20, w * 0.52, h * 0.50, w * 0.45);
+            spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+            spotLight.addColorStop(0.5, 'rgba(198, 243, 106, 0.04)');
+            spotLight.addColorStop(1, 'transparent');
+            ctx.fillStyle = spotLight;
+            ctx.fillRect(0, 0, w, h);
         }
 
-        // Render 3D Perspective Ad using Subdivided Triangles
-        function renderAdTexture(p) {
+        // -------------------------------------------------------------
+        // DRAW RAW NATURAL BILLBOARD SURFACE (PRE-INSERTION STATE)
+        // -------------------------------------------------------------
+        function drawRawSurface(w, h) {
+            const p = getPixelQuad(w, h);
+
+            ctx.save();
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 30;
+            ctx.shadowOffsetX = 10;
+            ctx.shadowOffsetY = 15;
+
+            ctx.beginPath();
+            ctx.moveTo(p[0].x, p[0].y);
+            ctx.lineTo(p[1].x, p[1].y);
+            ctx.lineTo(p[2].x, p[2].y);
+            ctx.lineTo(p[3].x, p[3].y);
+            ctx.closePath();
+
+            const surfGrad = ctx.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y);
+            surfGrad.addColorStop(0, '#1c222c');
+            surfGrad.addColorStop(0.5, '#141820');
+            surfGrad.addColorStop(1, '#0e1218');
+            ctx.fillStyle = surfGrad;
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            const midTopX = (p[0].x + p[1].x) * 0.5;
+            const midTopY = (p[0].y + p[1].y) * 0.5;
+            const midBotX = (p[3].x + p[2].x) * 0.5;
+            const midBotY = (p[3].y + p[2].y) * 0.5;
+
+            ctx.beginPath();
+            ctx.moveTo(midTopX, midTopY);
+            ctx.lineTo(midBotX, midBotY);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            const cx = (p[0].x + p[1].x + p[2].x + p[3].x) / 4;
+            const cy = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
+
+            const bracketSize = 18;
+            ctx.strokeStyle = '#c6f36a';
+            ctx.lineWidth = 2.5;
+
+            p.forEach((pt, i) => {
+                ctx.beginPath();
+                const dx = (i === 0 || i === 3) ? bracketSize : -bracketSize;
+                const dy = (i === 0 || i === 1) ? bracketSize : -bracketSize;
+                ctx.moveTo(pt.x, pt.y + dy);
+                ctx.lineTo(pt.x, pt.y);
+                ctx.lineTo(pt.x + dx, pt.y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#c6f36a';
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = 'bold 9px "JetBrains Mono", monospace';
+                ctx.fillStyle = '#c6f36a';
+                ctx.fillText(`P${i+1}`, pt.x + (dx > 0 ? 8 : -22), pt.y + (dy > 0 ? 12 : -6));
+            });
+
+            ctx.fillStyle = 'rgba(12, 18, 14, 0.85)';
+            ctx.strokeStyle = 'rgba(198, 243, 106, 0.5)';
+            ctx.lineWidth = 1;
+            const badgeW = 200;
+            const badgeH = 44;
+            ctx.beginPath();
+            ctx.roundRect(cx - badgeW * 0.5, cy - badgeH * 0.5, badgeW, badgeH, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#c6f36a';
+            ctx.font = 'bold 10px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText("[ 3D PLANAR CANDIDATE DETECTED ]", cx, cy - 4);
+
+            ctx.fillStyle = '#a1a1aa';
+            ctx.font = '9px "JetBrains Mono", monospace';
+            ctx.fillText("IOU 0.0% · CONFIDENCE: 99.4%", cx, cy + 12);
+
+            ctx.restore();
+        }
+
+        // -------------------------------------------------------------
+        // DRAW SEAMLESS IN-SCENE AD (AI BLEND MODE)
+        // -------------------------------------------------------------
+        function drawAdBlendSurface(w, h) {
+            const p = getPixelQuad(w, h);
             const cr = adCreatives[activeCreative];
 
-            // Draw Base Planar Quad Polygon
             ctx.save();
+
             ctx.beginPath();
             ctx.moveTo(p[0].x, p[0].y);
             ctx.lineTo(p[1].x, p[1].y);
@@ -1924,61 +2065,93 @@ python main.py --server --port 8000</code></pre>
             ctx.closePath();
             ctx.clip();
 
-            // Gradient Fill across Quad
-            const grad = ctx.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y);
-            grad.addColorStop(0, cr.color1);
-            grad.addColorStop(1, cr.color2);
-            ctx.fillStyle = grad;
+            ctx.fillStyle = cr.bgDark;
             ctx.fill();
 
-            // Inner brand graphics
+            const grad = ctx.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y);
+            grad.addColorStop(0, cr.color1);
+            grad.addColorStop(0.7, cr.color2);
+            grad.addColorStop(1, cr.bgDark);
+            ctx.fillStyle = grad;
+            ctx.globalAlpha = 0.85;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
             const cx = (p[0].x + p[1].x + p[2].x + p[3].x) / 4;
             const cy = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
 
-            // Glow circle in ad center
-            const radGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 90);
-            radGlow.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-            radGlow.addColorStop(1, 'transparent');
-            ctx.fillStyle = radGlow;
+            ctx.strokeStyle = cr.accent;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.arc(cx, cy, 90, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy, 75, 45, Math.PI / 12, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, 95, 55, Math.PI / 12, 0, Math.PI * 2);
+            ctx.stroke();
+
+            const coreGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 85);
+            coreGlow.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+            coreGlow.addColorStop(0.6, 'rgba(255, 255, 255, 0.08)');
+            coreGlow.addColorStop(1, 'transparent');
+            ctx.fillStyle = coreGlow;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 85, 0, Math.PI * 2);
             ctx.fill();
 
-            // Brand Text Label
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 24px "Manrope", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 24px "Manrope", sans-serif';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+            ctx.shadowBlur = 8;
             ctx.fillText(cr.name, cx, cy - 8);
+            ctx.shadowColor = 'transparent';
 
             ctx.fillStyle = cr.accent;
-            ctx.font = 'bold 10px "JetBrains Mono", monospace';
+            ctx.font = 'bold 9px "JetBrains Mono", monospace';
             ctx.letterSpacing = '2px';
             ctx.fillText(cr.tag, cx, cy + 18);
 
-            // Realistic Surface Specular Reflection & Glass Glare
             const glare = ctx.createLinearGradient(p[0].x, p[0].y, p[1].x, p[3].y);
-            glare.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
-            glare.addColorStop(0.35, 'rgba(255, 255, 255, 0.05)');
+            glare.addColorStop(0, 'rgba(255, 255, 255, 0.32)');
+            glare.addColorStop(0.35, 'rgba(255, 255, 255, 0.08)');
             glare.addColorStop(0.65, 'rgba(0, 0, 0, 0.15)');
-            glare.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+            glare.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
             ctx.fillStyle = glare;
             ctx.fill();
 
             ctx.restore();
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(198, 243, 106, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(p[0].x, p[0].y);
+            ctx.lineTo(p[1].x, p[1].y);
+            ctx.lineTo(p[2].x, p[2].y);
+            ctx.lineTo(p[3].x, p[3].y);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
         }
 
-        // Render Computer Vision Wireframe Mesh Mode
-        function renderCvMesh(p) {
-            // 3D Grid division lines inside the quad
-            ctx.save();
-            const divX = 7;
-            const divY = 5;
+        // -------------------------------------------------------------
+        // DRAW 3D COMPUTER VISION WIREFRAME MESH
+        // -------------------------------------------------------------
+        function drawMeshMode(w, h) {
+            drawAdBlendSurface(w, h);
+            const p = getPixelQuad(w, h);
 
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.save();
+            const divX = 8;
+            const divY = 6;
+
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
             ctx.lineWidth = 1;
 
-            // Vertical grid lines
             for (let i = 1; i < divX; i++) {
                 const t = i / divX;
                 const topX = p[0].x + (p[1].x - p[0].x) * t;
@@ -1992,7 +2165,6 @@ python main.py --server --port 8000</code></pre>
                 ctx.stroke();
             }
 
-            // Horizontal grid lines
             for (let j = 1; j < divY; j++) {
                 const s = j / divY;
                 const leftX = p[0].x + (p[3].x - p[0].x) * s;
@@ -2006,117 +2178,93 @@ python main.py --server --port 8000</code></pre>
                 ctx.stroke();
             }
 
-            // Centroid crosshair & Surface Normal Vector
             const cx = (p[0].x + p[1].x + p[2].x + p[3].x) / 4;
             const cy = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
 
             ctx.strokeStyle = '#c6f36a';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(cx - 20, cy);
-            ctx.lineTo(cx + 20, cy);
-            ctx.moveTo(cx, cy - 20);
-            ctx.lineTo(cx, cy + 20);
-            ctx.stroke();
-
-            // Normal Vector Arrow
-            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + 35, cy - 45);
+            ctx.lineTo(cx + 45, cy - 50);
             ctx.stroke();
 
-            ctx.fillStyle = '#38bdf8';
+            ctx.fillStyle = '#c6f36a';
             ctx.beginPath();
-            ctx.arc(cx + 35, cy - 45, 4, 0, Math.PI * 2);
+            ctx.arc(cx + 45, cy - 50, 4, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.font = '9px "JetBrains Mono", monospace';
+            ctx.fillStyle = 'rgba(0,0,0,0.85)';
+            ctx.fillRect(cx + 52, cy - 60, 160, 20);
+            ctx.strokeStyle = '#c6f36a';
+            ctx.strokeRect(cx + 52, cy - 60, 160, 20);
+
             ctx.fillStyle = '#c6f36a';
-            ctx.fillText("NORMAL n=[+0.18, -0.42, +0.89]", cx + 44, cy - 45);
+            ctx.font = 'bold 9px "JetBrains Mono", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText("NORMAL n=[+0.18, -0.42, +0.89]", cx + 58, cy - 46);
 
             ctx.restore();
         }
 
-        // Render Foreground Occlusion Simulation Mode
-        function renderOcclusionMode(p, width, height) {
-            renderAdTexture(p);
+        // -------------------------------------------------------------
+        // DRAW FOREGROUND OCCLUSION MASK
+        // -------------------------------------------------------------
+        function drawOcclusionMode(w, h) {
+            drawAdBlendSurface(w, h);
 
             ctx.save();
-            // Draw simulated foreground lamp post cutting through the right half of the quad
-            const poleX = width * 0.68;
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
-            ctx.strokeStyle = '#ef4444';
+            const poleX = w * 0.64;
+            const poleW = 32;
+
+            const poleGrad = ctx.createLinearGradient(poleX, 0, poleX + poleW, 0);
+            poleGrad.addColorStop(0, '#101520');
+            poleGrad.addColorStop(0.4, '#1e2638');
+            poleGrad.addColorStop(1, '#0c1018');
+            ctx.fillStyle = poleGrad;
+            ctx.fillRect(poleX, 0, poleW, h);
+
+            ctx.strokeStyle = '#f59e0b';
             ctx.lineWidth = 2;
+            ctx.strokeRect(poleX, 0, poleW, h);
 
-            // Vertical pole mask
-            ctx.fillRect(poleX - 14, 0, 28, height);
-            ctx.strokeRect(poleX - 14, 0, 28, height);
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+            ctx.fillRect(poleX, 0, poleW, h);
 
-            // Warning badge
-            ctx.fillStyle = '#ef4444';
-            ctx.font = 'bold 10px "JetBrains Mono", monospace';
-            ctx.fillText("OCCLUDER: FOREGROUND_POLE (IOU: 14.2%)", poleX + 22, height * 0.48);
+            ctx.fillStyle = 'rgba(0,0,0,0.85)';
+            ctx.fillRect(poleX - 70, h * 0.44, 180, 24);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.strokeRect(poleX - 70, h * 0.44, 180, 24);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 9px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText("FOREGROUND OCCLUDER: POLE", poleX + 20, h * 0.44 + 15);
 
             ctx.restore();
         }
 
-        // Render Attention Saliency Heatmap Mode
-        function renderHeatmapMode(p, width, height) {
-            drawSceneBackground(width, height);
+        // -------------------------------------------------------------
+        // DRAW ATTENTION SALIENCY HEATMAP
+        // -------------------------------------------------------------
+        function drawHeatmapMode(w, h) {
+            drawCinematicBackdrop(w, h);
+            const p = getPixelQuad(w, h);
 
             const cx = (p[0].x + p[1].x + p[2].x + p[3].x) / 4;
             const cy = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
 
-            // Draw multi-layer Gaussian attention blobs
-            const hGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 180);
-            hGrad.addColorStop(0, 'rgba(239, 68, 68, 0.85)');   // Hot Red core
-            hGrad.addColorStop(0.35, 'rgba(245, 158, 11, 0.65)'); // Orange
-            hGrad.addColorStop(0.65, 'rgba(198, 243, 106, 0.45)'); // Lime
-            hGrad.addColorStop(0.9, 'rgba(56, 189, 248, 0.2)');  // Cyan
-            hGrad.addColorStop(1, 'transparent');
-
-            ctx.fillStyle = hGrad;
-            ctx.fillRect(0, 0, width, height);
-
-            // Secondary hot spot
-            const sGrad = ctx.createRadialGradient(cx - 70, cy - 30, 5, cx - 70, cy - 30, 80);
-            sGrad.addColorStop(0, 'rgba(245, 158, 11, 0.7)');
-            sGrad.addColorStop(1, 'transparent');
-            ctx.fillStyle = sGrad;
-            ctx.fillRect(0, 0, width, height);
-        }
-
-        // Main Render Loop
-        function renderSimulation() {
-            const rect = container.getBoundingClientRect();
-            const p = getPixelQuad();
-
-            ctx.clearRect(0, 0, rect.width, rect.height);
-            drawSceneBackground(rect.width, rect.height);
-
-            if (simMode === 'blend') {
-                renderAdTexture(p);
-            } else if (simMode === 'mesh') {
-                renderAdTexture(p);
-                renderCvMesh(p);
-            } else if (simMode === 'occlusion') {
-                renderOcclusionMode(p, rect.width, rect.height);
-            } else if (simMode === 'heatmap') {
-                renderHeatmapMode(p, rect.width, rect.height);
-            }
-
-            // Draw Bounding Outline Quad
             ctx.save();
-            ctx.strokeStyle = '#c6f36a';
-            ctx.lineWidth = 2;
-            ctx.shadowColor = 'rgba(198, 243, 106, 0.8)';
-            ctx.shadowBlur = 10;
+            const hGrad = ctx.createRadialGradient(cx, cy, 15, cx, cy, 190);
+            hGrad.addColorStop(0, 'rgba(239, 68, 68, 0.90)');
+            hGrad.addColorStop(0.35, 'rgba(245, 158, 11, 0.75)');
+            hGrad.addColorStop(0.65, 'rgba(198, 243, 106, 0.55)');
+            hGrad.addColorStop(0.9, 'rgba(56, 189, 248, 0.25)');
+            hGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = hGrad;
+            ctx.fillRect(0, 0, w, h);
 
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(p[0].x, p[0].y);
             ctx.lineTo(p[1].x, p[1].y);
@@ -2124,156 +2272,198 @@ python main.py --server --port 8000</code></pre>
             ctx.lineTo(p[3].x, p[3].y);
             ctx.closePath();
             ctx.stroke();
+
             ctx.restore();
         }
 
-        // Recalculate Live Scientific Scores Based on Corner Drag
-        function recalculatePlacementTelemetry() {
-            const p = getPixelQuad();
+        // -------------------------------------------------------------
+        // MAIN SIMULATION RENDER LOOP (WITH INTERACTIVE DUAL-VIEW SPLIT)
+        // -------------------------------------------------------------
+        function renderSimulation() {
+            if (!container || !canvas) return;
             const rect = container.getBoundingClientRect();
-            const frameArea = rect.width * rect.height;
+            const w = rect.width;
+            const h = rect.height;
 
-            // Calculate Quadrilateral Area via Shoelace Formula
-            const area = 0.5 * Math.abs(
-                (p[0].x * p[1].y - p[1].x * p[0].y) +
-                (p[1].x * p[2].y - p[2].x * p[1].y) +
-                (p[2].x * p[3].y - p[3].x * p[2].y) +
-                (p[3].x * p[0].y - p[0].x * p[3].y)
-            );
-            const areaFraction = area / frameArea;
-            const areaPct = (areaFraction * 100).toFixed(1);
+            ctx.clearRect(0, 0, w, h);
 
-            // Area score curve: optimal around 15% - 25% of viewport
-            let areaScore = 100 * Math.min(1.0, areaFraction / 0.20);
-            if (areaFraction > 0.40) areaScore *= 0.85; // penalize screen hogging
+            // 1. Underneath Layer: Full Raw Natural Scene (Left of split)
+            drawCinematicBackdrop(w, h);
+            drawRawSurface(w, h);
 
-            // Geometry Score: aspect ratio and corner skew penalty
-            const dTop = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y);
-            const dBottom = Math.hypot(p[2].x - p[3].x, p[2].y - p[3].y);
-            const dLeft = Math.hypot(p[3].x - p[0].x, p[3].y - p[0].y);
-            const dRight = Math.hypot(p[2].x - p[1].x, p[2].y - p[1].y);
-            const skew = Math.abs(dTop - dBottom) / Math.max(dTop, dBottom);
-            const geomScore = Math.max(30, Math.min(99, 100 - skew * 120)).toFixed(1);
+            // 2. Clipped Layer: In-Scene AI Mode (Right of split)
+            const splitX = Math.max(10, Math.min(w - 10, splitRatio * w));
 
-            const stabScore = "96.5";
-            const occlPenalty = simMode === 'occlusion' ? 14.2 : 0.0;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(splitX, 0, w - splitX, h);
+            ctx.clip();
 
-            // Composite Score: 0.25*Dur + 0.20*Area + 0.15*Stab + 0.15*Geom - 0.25*Occl
-            const durScore = 95.0;
-            let finalComposite = (
-                0.25 * durScore +
-                0.20 * areaScore +
-                0.15 * parseFloat(stabScore) +
-                0.15 * parseFloat(geomScore) -
-                0.25 * (occlPenalty * 3.5)
-            );
-            finalComposite = Math.max(10, Math.min(99.4, finalComposite)).toFixed(1);
+            if (simMode === 'blend') {
+                drawAdBlendSurface(w, h);
+            } else if (simMode === 'mesh') {
+                drawMeshMode(w, h);
+            } else if (simMode === 'occlusion') {
+                drawOcclusionMode(w, h);
+            } else if (simMode === 'heatmap') {
+                drawHeatmapMode(w, h);
+            }
 
-            // Update DOM Readouts
-            document.getElementById('hudAreaScore').textContent = `${areaPct}%`;
-            document.getElementById('hudGeomScore').textContent = geomScore;
-            document.getElementById('hudOcclScore').textContent = `${occlPenalty.toFixed(1)}%`;
-            document.getElementById('hudFinalScore').textContent = finalComposite;
-            document.getElementById('hudScoreBar').style.width = `${finalComposite}%`;
+            ctx.restore();
 
-            // Animate Matrix values dynamically
-            const h00 = (0.75 + (p[1].x - p[0].x) / rect.width * 0.2).toFixed(3);
-            const h01 = (-(p[0].y - p[1].y) / rect.height * 0.3).toFixed(3);
-            const h02 = Math.round(p[0].x);
-            const h10 = ((p[3].x - p[0].x) / rect.width * 0.2).toFixed(3);
-            const h11 = (0.72 + (p[3].y - p[0].y) / rect.height * 0.2).toFixed(3);
-            const h12 = Math.round(p[0].y);
+            // 3. Draggable Divider Line & Center Pill Handle
+            ctx.save();
 
-            document.getElementById('hudMatrixValues').innerHTML = `
-        <div>[ ${h00 >= 0 ? '+' : ''}${h00}  ${h01 >= 0 ? '+' : ''}${h01}  +${h02}.0 ]</div>
-        <div>[ ${h10 >= 0 ? '+' : ''}${h10}  ${h11 >= 0 ? '+' : ''}${h11}  +${h12}.0 ]</div>
-        <div>[ -0.000  +0.000  +001.0 ]</div>
-      `;
+            ctx.strokeStyle = 'rgba(198, 243, 106, 0.95)';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = 'rgba(198, 243, 106, 0.8)';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.moveTo(splitX, 0);
+            ctx.lineTo(splitX, h);
+            ctx.stroke();
+
+            const pillW = 104;
+            const pillH = 26;
+            const pillY = h * 0.50;
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#0c120e';
+            ctx.beginPath();
+            ctx.roundRect(splitX - pillW * 0.5, pillY - pillH * 0.5, pillW, pillH, 13);
+            ctx.fill();
+
+            ctx.strokeStyle = '#c6f36a';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("◀ COMPARE ▶", splitX, pillY);
+
+            ctx.restore();
         }
 
-        // Mode Switcher handlers
+        // -------------------------------------------------------------
+        // INTERACTIVE POINTER / TOUCH DRAGGING FOR SPLIT SLIDER
+        // -------------------------------------------------------------
+        function updateSplitFromPointer(clientX) {
+            const rect = container.getBoundingClientRect();
+            const relX = clientX - rect.left;
+            splitRatio = Math.max(0.05, Math.min(0.95, relX / rect.width));
+            renderSimulation();
+        }
+
+        container.addEventListener('pointerdown', (e) => {
+            isDraggingSplit = true;
+            if (isAutoSweeping) toggleCameraMotion();
+            container.setPointerCapture(e.pointerId);
+            updateSplitFromPointer(e.clientX);
+        });
+
+        container.addEventListener('pointermove', (e) => {
+            if (!isDraggingSplit) return;
+            updateSplitFromPointer(e.clientX);
+        });
+
+        container.addEventListener('pointerup', (e) => {
+            if (isDraggingSplit) {
+                container.releasePointerCapture(e.pointerId);
+                isDraggingSplit = false;
+            }
+        });
+
+        // Mode Switcher
         function setSimMode(mode) {
             simMode = mode;
             ['blend', 'mesh', 'occlusion', 'heatmap'].forEach(m => {
                 const btn = document.getElementById('simTab' + m.charAt(0).toUpperCase() + m.slice(1));
-                if (m === mode) {
-                    btn.className = "px-3 py-1 rounded-lg font-bold bg-lime-400 text-ink-950 transition-all";
-                } else {
-                    btn.className = "px-3 py-1 rounded-lg text-zinc-400 hover:text-white transition-all";
+                if (btn) {
+                    if (m === mode) {
+                        btn.className = 'px-3 py-1 rounded-lg font-bold bg-lime-400 text-ink-950 transition-all';
+                    } else {
+                        btn.className = 'px-3 py-1 rounded-lg text-zinc-400 hover:text-white transition-all';
+                    }
                 }
             });
-            recalculatePlacementTelemetry();
+
+            const leftBadge = document.getElementById('hudLeftModeBadge');
+            if (leftBadge) {
+                if (mode === 'blend') leftBadge.innerHTML = '<i data-lucide="scan" class="w-3 h-3"></i><span>3D PLANAR SURFACE DETECTED</span>';
+                else if (mode === 'mesh') leftBadge.innerHTML = '<i data-lucide="grid" class="w-3 h-3"></i><span>3D HOMOGRAPHY MESH LOCKED</span>';
+                else if (mode === 'occlusion') leftBadge.innerHTML = '<i data-lucide="shield" class="w-3 h-3"></i><span>FOREGROUND OCCLUDER SEGMENTED</span>';
+                else if (mode === 'heatmap') leftBadge.innerHTML = '<i data-lucide="flame" class="w-3 h-3"></i><span>ATTENTION SALIENCY ANALYSIS</span>';
+                if (window.lucide) lucide.createIcons();
+            }
+
             renderSimulation();
         }
 
+        // Ad Creative Switcher
         function setAdCreative(idx) {
             activeCreative = idx;
             [0, 1, 2].forEach(i => {
                 const btn = document.getElementById('adBtn' + i);
-                if (i === idx) {
-                    btn.className = "px-2.5 py-1 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-all";
-                } else {
-                    btn.className = "px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition-all";
+                if (btn) {
+                    if (i === idx) {
+                        btn.className = 'px-2.5 py-1 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-all';
+                    } else {
+                        btn.className = 'px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition-all';
+                    }
                 }
             });
             renderSimulation();
         }
 
+        // Reset Split Position to Center
         function resetQuadPins() {
-            quadNorm = JSON.parse(JSON.stringify(defaultQuad));
-            updatePinPositions();
-            recalculatePlacementTelemetry();
+            splitRatio = 0.50;
             renderSimulation();
         }
 
+        // Auto-Sweep Animation Loop
         function toggleCameraMotion() {
-            isSimulatingMotion = !isSimulatingMotion;
+            isAutoSweeping = !isAutoSweeping;
             const btnText = document.getElementById('camMotionText');
             const icon = document.getElementById('camMotionIcon');
 
-            if (isSimulatingMotion) {
-                btnText.textContent = "Pause Motion";
-                icon.setAttribute('data-lucide', 'pause');
-                lucide.createIcons();
-                runMotionLoop();
+            if (isAutoSweeping) {
+                if (btnText) btnText.textContent = 'Pause Sweep';
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'pause');
+                    if (window.lucide) lucide.createIcons();
+                }
+                runSweepLoop();
             } else {
-                btnText.textContent = "Simulate Motion";
-                icon.setAttribute('data-lucide', 'play');
-                lucide.createIcons();
+                if (btnText) btnText.textContent = 'Auto-Sweep';
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'play');
+                    if (window.lucide) lucide.createIcons();
+                }
                 if (motionAnimId) cancelAnimationFrame(motionAnimId);
             }
         }
 
-        function runMotionLoop() {
-            if (!isSimulatingMotion) return;
-            motionFrame = (motionFrame + 1) % 1200;
-            document.getElementById('hudFrameCounter').textContent = `FRAME ${String(motionFrame).padStart(4, '0')} / 1200`;
+        function runSweepLoop() {
+            if (!isAutoSweeping) return;
+            sweepAngle += 0.022;
+            splitRatio = 0.50 + Math.sin(sweepAngle) * 0.32;
 
-            // Subtle camera pan drift
-            const t = motionFrame * 0.035;
-            const dx = Math.sin(t) * 0.015;
-            const dy = Math.cos(t * 0.8) * 0.009;
+            frameTicker = (frameTicker + 1) % 1200;
+            const counter = document.getElementById('hudFrameCounter');
+            if (counter) counter.textContent = `FRAME ${String(frameTicker).padStart(4, '0')} / 1200`;
 
-            quadNorm[0].x = defaultQuad[0].x + dx;
-            quadNorm[0].y = defaultQuad[0].y + dy;
-            quadNorm[1].x = defaultQuad[1].x + dx * 0.8;
-            quadNorm[1].y = defaultQuad[1].y + dy * 1.1;
-            quadNorm[2].x = defaultQuad[2].x + dx * 1.2;
-            quadNorm[2].y = defaultQuad[2].y + dy * 0.9;
-            quadNorm[3].x = defaultQuad[3].x + dx * 0.9;
-            quadNorm[3].y = defaultQuad[3].y + dy * 1.2;
-
-            updatePinPositions();
-            recalculatePlacementTelemetry();
             renderSimulation();
-
-            motionAnimId = requestAnimationFrame(runMotionLoop);
+            motionAnimId = requestAnimationFrame(runSweepLoop);
         }
 
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
-            recalculatePlacementTelemetry();
             initInteractiveScorer();
         });
 
