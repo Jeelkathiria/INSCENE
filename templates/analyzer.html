@@ -1050,10 +1050,82 @@
     let showAllRectangles = true;
     let selectedPlacement = null;
     let scoreLineNodes = [];
+    let videoRenderLoopId = null;
+
+    function startVideoCanvasLoop() {
+      if (videoRenderLoopId) cancelAnimationFrame(videoRenderLoopId);
+      function loop() {
+        const vid = document.getElementById("resultsVideoPlayer");
+        if (vid && !vid.paused && !vid.ended && currentResultData && currentResultData._mode === "video") {
+          drawCanvasOverlays();
+          videoRenderLoopId = requestAnimationFrame(loop);
+        }
+      }
+      videoRenderLoopId = requestAnimationFrame(loop);
+    }
+
+    function initVideoListeners() {
+      const vidPlayer = document.getElementById("resultsVideoPlayer");
+      if (!vidPlayer) return;
+
+      vidPlayer.addEventListener("play", startVideoCanvasLoop);
+      vidPlayer.addEventListener("pause", () => {
+        if (videoRenderLoopId) cancelAnimationFrame(videoRenderLoopId);
+        drawCanvasOverlays();
+      });
+      vidPlayer.addEventListener("timeupdate", () => {
+        if (currentResultData && currentResultData._mode === "video") {
+          drawCanvasOverlays();
+        }
+      });
+      vidPlayer.addEventListener("seeked", () => {
+        if (currentResultData && currentResultData._mode === "video") {
+          drawCanvasOverlays();
+        }
+      });
+    }
+
+    function setVideoSource(newUrl, targetTime = null) {
+      const vidPlayer = document.getElementById("resultsVideoPlayer");
+      const vidSource = document.getElementById("resultsVideoSource");
+      if (!vidPlayer || !vidSource || !newUrl) return;
+
+      const currentSrc = vidPlayer.currentSrc || vidSource.src || "";
+      const getBase = u => u.split('?')[0].split('/').pop();
+      const isSame = currentSrc && getBase(currentSrc) === getBase(newUrl);
+
+      if (isSame) {
+        if (typeof targetTime === "number" && !isNaN(targetTime)) {
+          vidPlayer.currentTime = Math.max(0, targetTime);
+        }
+        drawCanvasOverlays();
+        return;
+      }
+
+      const wasPaused = vidPlayer.paused;
+      const resumeTime = (typeof targetTime === "number" && !isNaN(targetTime)) ? targetTime : vidPlayer.currentTime;
+
+      vidSource.src = newUrl;
+      vidPlayer.src = newUrl;
+      vidPlayer.load();
+
+      const onMeta = () => {
+        vidPlayer.removeEventListener("loadedmetadata", onMeta);
+        if (!isNaN(resumeTime) && resumeTime >= 0) {
+          vidPlayer.currentTime = Math.min(resumeTime, vidPlayer.duration || resumeTime);
+        }
+        if (!wasPaused) {
+          vidPlayer.play().catch(e => console.log("Auto-resume caught:", e));
+        }
+        drawCanvasOverlays();
+      };
+      vidPlayer.addEventListener("loadedmetadata", onMeta);
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
       setupDropzone();
+      initVideoListeners();
 
       // Dynamic Mouse Spotlight tracking
       window.addEventListener('mousemove', (e) => {
@@ -1694,10 +1766,32 @@
         updateVideoInspector(p);
       }
 
+      // If isolating (showAllRectangles is false):
+      // Ensure the underlying video/photo is playing clean RAW media so all other burned-in boxes disappear!
+      if (currentResultData) {
+        if (currentResultData._mode === "video") {
+          const startSec = p.start_time_sec !== undefined ? p.start_time_sec : (p.raw_start_time_sec || 0);
+          if (!showAllRectangles) {
+            setVideoSource(currentResultData.raw_video_url, startSec);
+          } else {
+            setVideoSource(currentResultData.annotated_video_url, startSec);
+          }
+        } else {
+          const photoPlayer = document.getElementById("resultsPhotoPlayer");
+          if (photoPlayer) {
+            photoPlayer.src = (!showAllRectangles && currentResultData.raw_media_url)
+              ? currentResultData.raw_media_url
+              : (currentResultData.annotated_media_url || currentResultData.raw_media_url);
+          }
+        }
+      }
+
       // Update viewport notice
       const hint = document.getElementById("viewportStatusHint");
       if (hint) {
-        hint.textContent = showAllRectangles ? `Showing all detected rectangles on canvas.` : `Isolating Rank #${p.rank} (${p.class_name.toUpperCase()}). All other rectangles hidden.`;
+        hint.textContent = showAllRectangles
+          ? `Showing all detected rectangles.`
+          : `Isolating Rank #${p.rank} (${p.class_name.toUpperCase()}). All other rectangles hidden.`;
       }
 
       // Update score line active badge
@@ -1714,9 +1808,31 @@
       showAllRectangles = !showAllRectangles;
       updateShowAllButtonUI();
 
+      if (!currentResultData) return;
+
+      if (currentResultData._mode === "video") {
+        if (showAllRectangles) {
+          // Switch to annotated video (all boxes visible)
+          setVideoSource(currentResultData.annotated_video_url, null);
+        } else {
+          // Switch to raw video (only selected box will be visible on canvas)
+          const startSec = selectedPlacement ? (selectedPlacement.start_time_sec !== undefined ? selectedPlacement.start_time_sec : selectedPlacement.raw_start_time_sec) : null;
+          setVideoSource(currentResultData.raw_video_url, startSec);
+        }
+      } else {
+        const photoPlayer = document.getElementById("resultsPhotoPlayer");
+        if (photoPlayer) {
+          photoPlayer.src = showAllRectangles
+            ? (currentResultData.annotated_media_url || currentResultData.raw_media_url)
+            : currentResultData.raw_media_url;
+        }
+      }
+
       const hint = document.getElementById("viewportStatusHint");
       if (hint) {
-        hint.textContent = showAllRectangles ? `Showing all detected rectangles on canvas.` : `Showing only selected rectangle.`;
+        hint.textContent = showAllRectangles
+          ? `Showing all detected rectangles.`
+          : (selectedPlacement ? `Isolating Rank #${selectedPlacement.rank} (${selectedPlacement.class_name.toUpperCase()}). All other rectangles hidden.` : `Showing only selected rectangle.`);
       }
 
       drawCanvasOverlays();
@@ -1766,10 +1882,6 @@
 
       document.getElementById("scoreBanner").textContent = p.final_score;
       document.getElementById("auditText").textContent = p.audit_notes || "Optimal sequential ad space.";
-
-      if (p.start_time_sec !== undefined) {
-        seekTo(p.start_time_sec);
-      }
       lucide.createIcons();
     }
 
@@ -1805,8 +1917,8 @@
     function seekTo(sec) {
       const vid = document.getElementById("resultsVideoPlayer");
       if (vid && !isNaN(sec)) {
-        vid.currentTime = Math.max(0, sec - 0.2);
-        vid.play().catch(e => console.log(e));
+        vid.currentTime = Math.max(0, sec);
+        drawCanvasOverlays();
       }
     }
 
@@ -1826,18 +1938,21 @@
       if (!currentResultData) return;
 
       if (currentResultData._mode === "video") {
-        const vidPlayer = document.getElementById("resultsVideoPlayer");
-        const vidSource = document.getElementById("resultsVideoSource");
-        const currTime = vidPlayer.currentTime;
-        vidSource.src = mode === "annotated" ? currentResultData.annotated_video_url : currentResultData.raw_video_url;
-        vidPlayer.load();
-        vidPlayer.currentTime = currTime;
-        vidPlayer.play().catch(e => console.log(e));
+        if (mode === "raw") {
+          setVideoSource(currentResultData.raw_video_url, null);
+        } else {
+          const targetUrl = showAllRectangles ? currentResultData.annotated_video_url : currentResultData.raw_video_url;
+          setVideoSource(targetUrl, null);
+        }
       } else {
         const photoPlayer = document.getElementById("resultsPhotoPlayer");
-        photoPlayer.src = mode === "annotated" ? currentResultData.annotated_media_url : currentResultData.raw_media_url;
+        if (photoPlayer) {
+          photoPlayer.src = (mode === "annotated" && showAllRectangles)
+            ? (currentResultData.annotated_media_url || currentResultData.raw_media_url)
+            : currentResultData.raw_media_url;
+        }
       }
-      setTimeout(() => drawCanvasOverlays(), 150);
+      setTimeout(() => drawCanvasOverlays(), 100);
     }
 
     function resetToUpload() {
@@ -1893,10 +2008,47 @@
       return { rx, ry, rw, rh, nw, nh, cw, ch };
     }
 
-    function getPlacementQuad(p) {
+    function getPlacementQuad(p, targetTime = null) {
+      if (!p) return null;
+
+      // 1. Dynamic quad timeline for video placements
+      if (p.quad_timeline && Array.isArray(p.quad_timeline) && p.quad_timeline.length > 0) {
+        if (typeof targetTime === "number" && !isNaN(targetTime)) {
+          const start = p.start_time_sec !== undefined ? p.start_time_sec : p.raw_start_time_sec;
+          const end = p.end_time_sec !== undefined ? p.end_time_sec : p.raw_end_time_sec;
+
+          // If playback is outside the active interval of this placement (>0.4s before or after), hide it
+          if (start !== undefined && end !== undefined) {
+            if (targetTime < start - 0.4 || targetTime > end + 0.4) {
+              return null;
+            }
+          }
+
+          // Pick closest keyframe snapshot to targetTime
+          let closest = p.quad_timeline[0];
+          let minDiff = Math.abs(closest.t - targetTime);
+          for (let i = 1; i < p.quad_timeline.length; i++) {
+            const snap = p.quad_timeline[i];
+            const diff = Math.abs(snap.t - targetTime);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closest = snap;
+            }
+          }
+          return closest.q;
+        }
+
+        // Default to representative middle snapshot
+        const midIdx = Math.floor(p.quad_timeline.length / 2);
+        return p.quad_timeline[midIdx].q;
+      }
+
+      // 2. Fallback to static quad_points
       if (p.quad_points && Array.isArray(p.quad_points) && p.quad_points.length === 4) {
         return p.quad_points;
       }
+
+      // 3. Fallback to position_xy & dimensions_wh
       if (p.position_xy && p.dimensions_wh) {
         const posMatch = String(p.position_xy).match(/\(?(\d+),\s*(\d+)\)?/);
         const dimMatch = String(p.dimensions_wh).match(/(\d+)x(\d+)/);
@@ -1909,98 +2061,81 @@
       return null;
     }
 
-    function drawCanvasOverlays() {
-      const canvas = document.getElementById("overlayCanvas");
-      if (!canvas || !currentResultData) return;
+    function renderSingleQuadOverlay(ctx, bounds, p, quad, isSelected, showBadge = true) {
+      if (!quad || quad.length !== 4) return;
+      const nw = bounds.nw || 1;
+      const nh = bounds.nh || 1;
+      const rw = bounds.rw || bounds.cw;
+      const rh = bounds.rh || bounds.ch;
+      const rx = bounds.rx || 0;
+      const ry = bounds.ry || 0;
 
-      const bounds = getMediaRenderBounds();
-      canvas.width = bounds.cw;
-      canvas.height = bounds.ch;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const screenPts = quad.map(pt => [
+        rx + (pt[0] / nw) * rw,
+        ry + (pt[1] / nh) * rh
+      ]);
 
-      const placements = currentResultData.placements || [];
-      if (placements.length === 0) return;
+      const strokeColor = isSelected ? "#c6f36a" : (p.rank === 1 ? "#34d399" : "#38bdf8");
+      const fillColor = isSelected ? "rgba(198, 243, 106, 0.20)" : "rgba(56, 189, 248, 0.08)";
 
-      // When showAllRectangles is true: draw all
-      // When false (a candidate was clicked): ONLY draw the selected placement rectangle!
-      let toDraw = [];
-      if (showAllRectangles) {
-        toDraw = placements;
-      } else if (selectedPlacement) {
-        toDraw = [selectedPlacement];
-      } else {
-        toDraw = [placements[0]];
+      ctx.save();
+
+      // 1. Fill Quadrilateral
+      ctx.beginPath();
+      ctx.moveTo(screenPts[0][0], screenPts[0][1]);
+      for (let i = 1; i < screenPts.length; i++) {
+        ctx.lineTo(screenPts[i][0], screenPts[i][1]);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+
+      // 2. Stroke with Subtle Neon Line
+      ctx.lineWidth = isSelected ? 2.5 : 1.5;
+      ctx.strokeStyle = strokeColor;
+      ctx.shadowColor = strokeColor;
+      ctx.shadowBlur = isSelected ? 12 : 6;
+      ctx.stroke();
+      ctx.restore();
+
+      // 3. Corner Points [P1, P2, P3, P4]
+      const cornerLabels = ["P1", "P2", "P3", "P4"];
+      screenPts.forEach((pt, cIdx) => {
+        ctx.beginPath();
+        ctx.arc(pt[0], pt[1], isSelected ? 4.5 : 3, 0, 2 * Math.PI);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = strokeColor;
+        ctx.stroke();
+
+        if (isSelected) {
+          ctx.font = "bold 9px 'JetBrains Mono', monospace";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(cornerLabels[cIdx], pt[0] + 5, pt[1] - 5);
+        }
+      });
+
+      // 4. Center Crosshairs for Selected Quad
+      if (isSelected) {
+        const cx = screenPts.reduce((sum, pt) => sum + pt[0], 0) / 4;
+        const cy = screenPts.reduce((sum, pt) => sum + pt[1], 0) / 4;
+        ctx.strokeStyle = "rgba(198, 243, 106, 0.85)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+        ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+        ctx.stroke();
       }
 
-      toDraw.forEach((p) => {
-        const isSelected = selectedPlacement && (p.rank === selectedPlacement.rank);
-        const quad = getPlacementQuad(p);
-        if (!quad) return;
-
-        const screenPts = quad.map(pt => [
-          bounds.rx + (pt[0] / bounds.nw) * bounds.rw,
-          bounds.ry + (pt[1] / bounds.nh) * bounds.rh
-        ]);
-
-        const strokeColor = isSelected ? "#c6f36a" : (p.rank === 1 ? "#34d399" : "#38bdf8");
-        const fillColor = isSelected ? "rgba(198, 243, 106, 0.18)" : "rgba(56, 189, 248, 0.08)";
-
-        ctx.save();
-
-        // 1. Fill Quadrilateral
-        ctx.beginPath();
-        ctx.moveTo(screenPts[0][0], screenPts[0][1]);
-        for (let i = 1; i < screenPts.length; i++) {
-          ctx.lineTo(screenPts[i][0], screenPts[i][1]);
-        }
-        ctx.closePath();
-        ctx.fillStyle = fillColor;
-        ctx.fill();
-
-        // 2. Stroke with Subtle Neon Line
-        ctx.lineWidth = isSelected ? 2.5 : 1.5;
-        ctx.strokeStyle = strokeColor;
-        ctx.shadowColor = strokeColor;
-        ctx.shadowBlur = isSelected ? 12 : 6;
-        ctx.stroke();
-        ctx.restore();
-
-        // 3. Corner Points [P1, P2, P3, P4]
-        const cornerLabels = ["P1", "P2", "P3", "P4"];
-        screenPts.forEach((pt, cIdx) => {
-          ctx.beginPath();
-          ctx.arc(pt[0], pt[1], isSelected ? 4.5 : 3, 0, 2 * Math.PI);
-          ctx.fillStyle = "#ffffff";
-          ctx.fill();
-          ctx.lineWidth = 1.5;
-          ctx.strokeStyle = strokeColor;
-          ctx.stroke();
-
-          if (isSelected) {
-            ctx.font = "bold 9px 'JetBrains Mono', monospace";
-            ctx.fillStyle = "#ffffff";
-            ctx.fillText(cornerLabels[cIdx], pt[0] + 5, pt[1] - 5);
-          }
-        });
-
-        // 4. Center Crosshairs for Selected Quad
-        if (isSelected) {
-          const cx = screenPts.reduce((sum, pt) => sum + pt[0], 0) / 4;
-          const cy = screenPts.reduce((sum, pt) => sum + pt[1], 0) / 4;
-          ctx.strokeStyle = "rgba(198, 243, 106, 0.85)";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
-          ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
-          ctx.stroke();
-        }
-
-        // 5. Floating Badge above Rectangle
+      // 5. Floating Badge above Rectangle
+      if (showBadge) {
         const topPt = screenPts.reduce((min, cur) => cur[1] < min[1] ? cur : min, screenPts[0]);
-        const badgeX = Math.max(12, topPt[0] - 32);
+        const badgeX = Math.max(12, Math.min(bounds.cw - 120, topPt[0] - 32));
         const badgeY = Math.max(22, topPt[1] - 10);
-        const badgeText = `#${p.rank} • ${p.final_score}`;
+        const isHero = p.class_name && p.class_name.toLowerCase().includes("hero");
+        const isSip = p.class_name && p.class_name.toLowerCase().includes("sip");
+        const badgeText = `#${p.rank} • ${p.final_score}${isHero ? (isSip ? ' ☕ SIP' : ' ★ HERO') : ''}`;
 
         ctx.font = "bold 10px 'JetBrains Mono', monospace";
         const textWidth = ctx.measureText(badgeText).width;
@@ -2013,7 +2148,87 @@
 
         ctx.fillStyle = isSelected ? "#c6f36a" : "#ffffff";
         ctx.fillText(badgeText, badgeX + 1, badgeY);
-      });
+      }
+    }
+
+    function drawCanvasOverlays() {
+      const canvas = document.getElementById("overlayCanvas");
+      if (!canvas || !currentResultData) return;
+
+      const bounds = getMediaRenderBounds();
+      canvas.width = bounds.cw;
+      canvas.height = bounds.ch;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (activeMediaMode === "raw") {
+        return; // Pure raw media mode requested by user
+      }
+
+      const isVideo = currentResultData._mode === "video";
+      const vidPlayer = isVideo ? document.getElementById("resultsVideoPlayer") : null;
+      const currTime = vidPlayer ? vidPlayer.currentTime : null;
+      const placements = currentResultData.placements || [];
+      if (placements.length === 0) return;
+
+      // Case A: Show All Rectangles
+      if (showAllRectangles) {
+        if (isVideo) {
+          // In video mode on annotated_video_url, OpenCV already burned all candidate boxes into the video stream!
+          // We can optionally draw the accent badge / crosshair on the active selection
+          if (selectedPlacement) {
+            const quad = getPlacementQuad(selectedPlacement, currTime);
+            if (quad) {
+              renderSingleQuadOverlay(ctx, bounds, selectedPlacement, quad, true, false);
+            }
+          }
+        } else {
+          // Photo mode: render all candidates
+          placements.forEach((p) => {
+            const isSelected = selectedPlacement && (p.rank === selectedPlacement.rank);
+            const quad = getPlacementQuad(p, null);
+            if (quad) {
+              renderSingleQuadOverlay(ctx, bounds, p, quad, isSelected, true);
+            }
+          });
+        }
+        return;
+      }
+
+      // Case B: ISOLATE SELECTED PLACEMENT ONLY (showAllRectangles === false)
+      // The video player is playing raw_video_url (no boxes in video).
+      // Canvas draws ONLY the selected placement's quadrilateral rectangle!
+      // All other rectangles DISAPPEAR completely!
+      const target = selectedPlacement || placements[0];
+      const quad = getPlacementQuad(target, currTime);
+
+      if (quad) {
+        renderSingleQuadOverlay(ctx, bounds, target, quad, true, true);
+      } else if (isVideo && target && currTime !== null) {
+        // Video playback is currently outside this target placement's active timeline slot
+        // Show subtle status badge indicating the placement's active time
+        const start = target.start_time_sec !== undefined ? target.start_time_sec : target.raw_start_time_sec;
+        const end = target.end_time_sec !== undefined ? target.end_time_sec : target.raw_end_time_sec;
+        if (start !== undefined && end !== undefined) {
+          ctx.save();
+          const msg = `Placement #${target.rank} (${target.class_name.toUpperCase()}) active at ${formatTimeline(start, end)}`;
+          ctx.font = "bold 11px 'JetBrains Mono', monospace";
+          const tw = ctx.measureText(msg).width;
+          const px = Math.max(20, (bounds.cw - tw) / 2);
+          const py = bounds.ch - 30;
+          ctx.fillStyle = "rgba(7, 9, 14, 0.88)";
+          ctx.strokeStyle = "rgba(198, 243, 106, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(px - 14, py - 14, tw + 28, 24, 12);
+          else ctx.rect(px - 14, py - 14, tw + 28, 24);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = "#c6f36a";
+          ctx.fillText(msg, px, py + 2);
+          ctx.restore();
+        }
+      }
     }
 
     /* ========================================================= */

@@ -715,11 +715,13 @@ class VideoPlacementPipeline:
 
         # CSV export
         if records:
-            keys = list(records[0].keys())
+            keys = [k for k in records[0].keys() if k not in ["quad_points", "quad_timeline"]]
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=keys)
+                writer = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
                 writer.writeheader()
-                writer.writerows(records)
+                for r in records:
+                    row = {k: v for k, v in r.items() if k in keys}
+                    writer.writerow(row)
         else:
             with open(csv_path, "w", newline="", encoding="utf-8") as f:
                 f.write("rank,track_id,class_name,start_time_sec,end_time_sec,duration_sec,final_score\n")

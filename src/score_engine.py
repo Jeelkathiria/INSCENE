@@ -283,6 +283,10 @@ class TrackletScore:
     timeline_str: str = ""
     is_sequential_slot: bool = True
 
+    # Planar quad coordinates for client-side viewport isolation
+    quad_points: List[List[float]] = field(default_factory=list)
+    quad_timeline: List[Dict[str, Any]] = field(default_factory=list)
+
     def __post_init__(self):
         if not self.timeline_str:
             self.slot_start_time = self.start_time
@@ -315,7 +319,9 @@ class TrackletScore:
             "mean_occlusion_pct": round(self.mean_occlusion_ratio * 100, 2),
             "motion_jitter_px": round(self.motion_jitter, 2),
             "is_recommended": self.is_recommended,
-            "audit_notes": "; ".join(self.audit_notes)
+            "audit_notes": "; ".join(self.audit_notes),
+            "quad_points": self.quad_points,
+            "quad_timeline": self.quad_timeline
         }
 
 
@@ -438,6 +444,26 @@ class ScoreEngine:
             mean_occ <= 0.35
         )
 
+        # Extract representative quad and quad timeline for UI client-side rendering
+        rep_quad: List[List[float]] = []
+        quad_timeline: List[Dict[str, Any]] = []
+        if hist:
+            # Pick representative quad from the median frame
+            mid_snap = hist[len(hist) // 2]
+            rep_quad = [[round(float(pt[0]), 1), round(float(pt[1]), 1)] for pt in mid_snap.quad]
+
+            # Sample keyframe quads along the tracklet timeline (up to 50 evenly spaced points)
+            step = max(1, len(hist) // 50)
+            sampled_snaps = hist[::step]
+            if hist[-1] not in sampled_snaps:
+                sampled_snaps.append(hist[-1])
+
+            for snap in sampled_snaps:
+                quad_timeline.append({
+                    "t": round(float(snap.timestamp_sec), 2),
+                    "q": [[round(float(pt[0]), 1), round(float(pt[1]), 1)] for pt in snap.quad]
+                })
+
         return TrackletScore(
             track_id=track.track_id,
             class_name=track.class_name,
@@ -456,7 +482,9 @@ class ScoreEngine:
             motion_jitter=motion_jitter,
             mean_geometry_score=mean_geom,
             is_recommended=is_recommended,
-            audit_notes=notes
+            audit_notes=notes,
+            quad_points=rep_quad,
+            quad_timeline=quad_timeline
         )
 
     def evaluate_and_rank_all(self, tracklets: List[Tracklet]) -> List[TrackletScore]:
