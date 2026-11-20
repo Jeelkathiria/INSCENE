@@ -212,6 +212,12 @@
     ::-webkit-scrollbar-track { background: #070806; }
     ::-webkit-scrollbar-thumb { background: #23251e; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: #3a3e32; }
+
+    /* Custom Terminal Scroll & Styling */
+    .terminal-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .terminal-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.4); }
+    .terminal-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+    .terminal-scroll::-webkit-scrollbar-thumb:hover { background: rgba(198, 243, 106, 0.4); }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-lime-400 selection:text-black relative">
@@ -374,8 +380,11 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center w-full">
-            <div class="md:col-span-6 flex flex-col space-y-2">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full">
+            
+            <!-- Left Side: Live Preview, Progress & Pipeline Stages (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col space-y-4">
+              <!-- Live Preview Frame -->
               <div class="relative bg-black rounded-2xl overflow-hidden border border-white/10 aspect-video flex items-center justify-center shadow-2xl">
                 <div class="hud-bracket-tl"></div>
                 <div class="hud-bracket-tr"></div>
@@ -397,10 +406,9 @@
                   <span id="livePreviewFrameNum">Frame #0</span>
                 </div>
               </div>
-            </div>
 
-            <div class="md:col-span-6 flex flex-col space-y-4 font-mono">
-              <div class="space-y-2">
+              <!-- Progress bar & metrics -->
+              <div class="space-y-2 font-mono">
                 <div class="flex justify-between text-xs text-zinc-400">
                   <span class="flex items-center space-x-1.5">
                     <i data-lucide="layers" class="w-3.5 h-3.5 text-zinc-400"></i>
@@ -413,112 +421,148 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-2.5 text-xs">
-                <div class="bg-ink-850/90 p-3 rounded-2xl border border-white/[0.06]">
-                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
+              <!-- 4 Stat Mini Cards -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                <div class="bg-ink-850/90 p-2.5 rounded-xl border border-white/[0.06]">
+                  <span class="text-[9px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
                     <i data-lucide="zap" class="w-3 h-3 text-lime-400"></i>
                     <span>Throughput</span>
                   </span>
-                  <span id="liveFpsVal" class="text-sm font-bold text-white mt-0.5 block">0.0 FPS</span>
+                  <span id="liveFpsVal" class="text-sm font-bold text-white mt-0.5 block truncate">0.0 FPS</span>
                 </div>
-                <div class="bg-ink-850/90 p-3 rounded-2xl border border-white/[0.06]">
-                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
+                <div class="bg-ink-850/90 p-2.5 rounded-xl border border-white/[0.06]">
+                  <span class="text-[9px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
                     <i data-lucide="box" class="w-3 h-3 text-cyan-400"></i>
                     <span>Surfaces</span>
                   </span>
-                  <span id="liveActiveSurfaces" class="text-sm font-bold text-white mt-0.5 block">0 Detected</span>
+                  <span id="liveActiveSurfaces" class="text-sm font-bold text-white mt-0.5 block truncate">0 Detected</span>
                 </div>
-                <div class="bg-ink-850/90 p-3 rounded-2xl border border-white/[0.06]">
-                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
+                <div class="bg-ink-850/90 p-2.5 rounded-xl border border-white/[0.06]">
+                  <span class="text-[9px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
                     <i data-lucide="clock" class="w-3 h-3 text-zinc-400"></i>
                     <span>Playhead</span>
                   </span>
-                  <span id="liveTimestamp" class="text-sm font-bold text-zinc-200 mt-0.5 block">00:00.0s</span>
+                  <span id="liveTimestamp" class="text-sm font-bold text-zinc-200 mt-0.5 block truncate">00:00.0s</span>
                 </div>
-                <div class="bg-ink-850/90 p-3 rounded-2xl border border-white/[0.06]">
-                  <span class="text-[10px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
+                <div class="bg-ink-850/90 p-2.5 rounded-xl border border-white/[0.06]">
+                  <span class="text-[9px] text-zinc-500 uppercase tracking-wider block flex items-center space-x-1">
                     <i data-lucide="activity" class="w-3 h-3 text-emerald-400"></i>
                     <span>Pipeline</span>
                   </span>
-                  <span class="text-sm font-bold text-emerald-400 mt-0.5 block">Active</span>
+                  <span class="text-sm font-bold text-emerald-400 mt-0.5 block truncate">Active</span>
+                </div>
+              </div>
+
+              <!-- Step-by-Step Execution Tracker (Video) -->
+              <div class="w-full border-t border-white/[0.08] pt-3">
+                <div class="flex items-center justify-between mb-2 text-xs">
+                  <span class="text-[10px] text-zinc-400 font-bold uppercase tracking-widest flex items-center space-x-1.5">
+                    <i data-lucide="git-commit" class="w-3.5 h-3.5 text-lime-400"></i>
+                    <span>Pipeline Stages:</span>
+                  </span>
+                  <span id="videoCurrentStepBadge" class="px-2 py-0.5 rounded-full bg-lime-400/10 text-lime-300 border border-lime-400/30 text-[9px] uppercase font-bold">
+                    Stage 1 of 5
+                  </span>
+                </div>
+                
+                <div class="grid grid-cols-5 gap-1.5 text-left">
+                  <div id="stepVideo1" class="p-2 rounded-xl bg-lime-400/[0.06] border border-lime-400/50 shadow-md transition-all flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                      <div id="stepVideoIcon1" class="w-4 h-4 rounded bg-lime-400 text-black flex items-center justify-center font-bold text-[9px]">1</div>
+                      <span id="stepVideoBadge1" class="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-lime-400/20 text-lime-300 uppercase animate-pulse">Run</span>
+                    </div>
+                    <div class="text-[11px] font-bold text-white truncate">1. Ingest</div>
+                    <div id="stepVideoDesc1" class="text-[9px] text-zinc-400 truncate">Extracting frames</div>
+                  </div>
+
+                  <div id="stepVideo2" class="p-2 rounded-xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                      <div id="stepVideoIcon2" class="w-4 h-4 rounded bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-[9px]">2</div>
+                      <span id="stepVideoBadge2" class="px-1.5 py-0.2 rounded text-[8px] font-mono text-zinc-500 uppercase">Wait</span>
+                    </div>
+                    <div class="text-[11px] font-bold text-white truncate">2. Detect</div>
+                    <div id="stepVideoDesc2" class="text-[9px] text-zinc-400 truncate">Planar surfaces</div>
+                  </div>
+
+                  <div id="stepVideo3" class="p-2 rounded-xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                      <div id="stepVideoIcon3" class="w-4 h-4 rounded bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-[9px]">3</div>
+                      <span id="stepVideoBadge3" class="px-1.5 py-0.2 rounded text-[8px] font-mono text-zinc-500 uppercase">Wait</span>
+                    </div>
+                    <div class="text-[11px] font-bold text-white truncate">3. Track</div>
+                    <div id="stepVideoDesc3" class="text-[9px] text-zinc-400 truncate">Homography drift</div>
+                  </div>
+
+                  <div id="stepVideo4" class="p-2 rounded-xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                      <div id="stepVideoIcon4" class="w-4 h-4 rounded bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-[9px]">4</div>
+                      <span id="stepVideoBadge4" class="px-1.5 py-0.2 rounded text-[8px] font-mono text-zinc-500 uppercase">Wait</span>
+                    </div>
+                    <div class="text-[11px] font-bold text-white truncate">4. Occlusion</div>
+                    <div id="stepVideoDesc4" class="text-[9px] text-zinc-400 truncate">Line-of-sight</div>
+                  </div>
+
+                  <div id="stepVideo5" class="p-2 rounded-xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1">
+                      <div id="stepVideoIcon5" class="w-4 h-4 rounded bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-[9px]">5</div>
+                      <span id="stepVideoBadge5" class="px-1.5 py-0.2 rounded text-[8px] font-mono text-zinc-500 uppercase">Wait</span>
+                    </div>
+                    <div class="text-[11px] font-bold text-white truncate">5. Score</div>
+                    <div id="stepVideoDesc5" class="text-[9px] text-zinc-400 truncate">Time slots</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Step-by-Step Execution Tracker (Video) -->
-          <div class="w-full border-t border-white/[0.08] pt-4">
-            <div class="flex items-center justify-between mb-2.5 text-xs">
-              <span class="text-[11px] text-zinc-400 font-bold uppercase tracking-widest flex items-center space-x-2">
-                <i data-lucide="git-commit" class="w-4 h-4 text-lime-400"></i>
-                <span>Pipeline Execution Stages:</span>
-              </span>
-              <span id="videoCurrentStepBadge" class="px-2.5 py-0.5 rounded-full bg-lime-400/10 text-lime-300 border border-lime-400/30 text-[10px] uppercase font-bold">
-                Stage 1 of 5
-              </span>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
-              <div id="stepVideo1" class="p-2.5 rounded-2xl bg-lime-400/[0.06] border border-lime-400/50 shadow-md transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepVideoIcon1" class="w-5 h-5 rounded-md bg-lime-400 text-black flex items-center justify-center font-bold text-[10px] shrink-0">1</div>
-                  <span id="stepVideoBadge1" class="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-lime-400/20 text-lime-300 border border-lime-400/40 uppercase animate-pulse">Active</span>
+            <!-- Right Side: Terminal Log Box (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col h-full space-y-2">
+              <div class="rounded-2xl border border-white/10 bg-[#07090e] shadow-2xl overflow-hidden flex flex-col h-full min-h-[480px]">
+                <!-- Terminal Title Bar -->
+                <div class="flex items-center justify-between px-3.5 py-2.5 bg-ink-950/90 border-b border-white/[0.08] select-none">
+                  <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-1.5">
+                      <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block border border-red-600/50"></span>
+                      <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block border border-amber-600/50"></span>
+                      <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block border border-emerald-600/50"></span>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-zinc-300 ml-2 flex items-center space-x-1.5">
+                      <i data-lucide="terminal" class="w-3.5 h-3.5 text-lime-400"></i>
+                      <span>inscene-cv :: stdout</span>
+                    </span>
+                  </div>
+                  <div class="flex items-center space-x-2 font-mono">
+                    <span class="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-400 font-bold">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                      <span>STREAMING</span>
+                    </span>
+                    <span id="videoLogCount" class="text-[10px] text-zinc-500">0 lines</span>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-xs font-bold text-white">1. Ingestion</div>
-                  <div id="stepVideoDesc1" class="text-[10px] text-zinc-400 font-sans truncate">Extracting frames</div>
-                </div>
-              </div>
 
-              <div id="stepVideo2" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepVideoIcon2" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-[10px] shrink-0">2</div>
-                  <span id="stepVideoBadge2" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
+                <!-- Terminal Console Body -->
+                <div id="videoTerminalLogs" class="p-3.5 overflow-y-auto flex-1 font-mono text-xs leading-relaxed space-y-1 bg-[#05070a] select-text scroll-smooth terminal-scroll" style="max-height: 440px;">
+                  <div class="text-zinc-500 text-[11px] mb-2 font-mono pb-2 border-b border-white/[0.04]">
+                    <span class="text-lime-400 font-bold">root@inscene-cv</span>:<span class="text-cyan-400">~</span>$ ./bin/pipeline --track --homography --format=json
+                  </div>
+                  <div class="text-zinc-500 text-[11px] italic">Awaiting worker thread stream output...</div>
                 </div>
-                <div>
-                  <div class="text-xs font-bold text-white">2. Detection</div>
-                  <div id="stepVideoDesc2" class="text-[10px] text-zinc-400 font-sans truncate">Planar surfaces</div>
-                </div>
-              </div>
 
-              <div id="stepVideo3" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepVideoIcon3" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-[10px] shrink-0">3</div>
-                  <span id="stepVideoBadge3" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-white">3. Tracking</div>
-                  <div id="stepVideoDesc3" class="text-[10px] text-zinc-400 font-sans truncate">Homography drift</div>
-                </div>
-              </div>
-
-              <div id="stepVideo4" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepVideoIcon4" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">4</div>
-                  <span id="stepVideoBadge4" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-white">4. Occlusion</div>
-                  <div id="stepVideoDesc4" class="text-[10px] text-zinc-400 font-sans truncate">Line-of-sight</div>
-                </div>
-              </div>
-
-              <div id="stepVideo5" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepVideoIcon5" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">5</div>
-                  <span id="stepVideoBadge5" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-white">5. Scoring</div>
-                  <div id="stepVideoDesc5" class="text-[10px] text-zinc-400 font-sans truncate">Time slots</div>
+                <!-- Terminal Bottom Status Bar -->
+                <div class="flex items-center justify-between px-3 py-1.5 bg-ink-950/90 border-t border-white/[0.06] text-[10px] font-mono text-zinc-500">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-lime-400">● LIVE BUFFER</span>
+                    <span>| UTF-8</span>
+                  </div>
+                  <div class="text-zinc-400">Auto-scrolling</div>
                 </div>
               </div>
             </div>
+
           </div>
 
         </div>
 
-        <!-- Visible Step-by-Step Photo Processing HUD -->
+        <!-- Visible Step-by-Step Photo Processing HUD with Live Terminal -->
         <div id="photoProcessingLoader" class="hidden w-full mt-8 p-6 sm:p-8 bg-ink-900/90 backdrop-blur-2xl rounded-3xl border border-lime-400/25 shadow-2xl flex flex-col space-y-5 relative overflow-hidden font-mono">
           
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full border-b border-white/[0.08] pb-4">
@@ -536,62 +580,116 @@
             </div>
           </div>
 
-          <div class="w-full bg-ink-800 h-2 rounded-full overflow-hidden p-0.5 border border-white/5">
-            <div class="h-full rounded-full progress-shimmer animate-pulse w-full"></div>
-          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+            
+            <!-- Left Side: Photo Stages & Progress (6 cols) -->
+            <div class="lg:col-span-6 flex flex-col space-y-4">
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-xs text-zinc-400">
+                  <span>Photo Homography Engine</span>
+                  <span class="text-lime-400 font-bold">Scanning...</span>
+                </div>
+                <div class="w-full bg-ink-800 h-2 rounded-full overflow-hidden p-0.5 border border-white/5">
+                  <div class="h-full rounded-full progress-shimmer animate-pulse w-full"></div>
+                </div>
+              </div>
 
-          <!-- Step-by-Step Execution Tracker (Photo) -->
-          <div class="w-full border-t border-white/[0.08] pt-4">
-            <div class="text-[11px] text-zinc-400 font-bold uppercase tracking-widest flex items-center space-x-2 mb-2.5">
-              <i data-lucide="git-commit" class="w-4 h-4 text-cyan-400"></i>
-              <span>Photo Pipeline Execution Stages:</span>
+              <!-- Step-by-Step Execution Tracker (Photo) -->
+              <div class="w-full border-t border-white/[0.08] pt-3">
+                <div class="text-[11px] text-zinc-400 font-bold uppercase tracking-widest flex items-center space-x-2 mb-2.5">
+                  <i data-lucide="git-commit" class="w-4 h-4 text-cyan-400"></i>
+                  <span>Photo Pipeline Execution Stages:</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div id="stepPhoto1" class="p-2.5 rounded-2xl bg-lime-400/[0.06] border border-lime-400/50 shadow-md transition-all flex flex-col justify-between space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <div id="stepPhotoIcon1" class="w-5 h-5 rounded-md bg-lime-400 text-black flex items-center justify-center font-bold text-[10px] shrink-0">1</div>
+                      <span id="stepPhotoBadge1" class="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-lime-400/20 text-lime-300 border border-lime-400/40 uppercase animate-pulse">Active</span>
+                    </div>
+                    <div>
+                      <div class="text-xs font-bold text-white">1. Image Ingestion</div>
+                      <div id="stepPhotoDesc1" class="text-[10px] text-zinc-400 font-sans truncate">Validating resolution</div>
+                    </div>
+                  </div>
+
+                  <div id="stepPhoto2" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <div id="stepPhotoIcon2" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">2</div>
+                      <span id="stepPhotoBadge2" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
+                    </div>
+                    <div>
+                      <div class="text-xs font-bold text-white">2. Contour Detection</div>
+                      <div id="stepPhotoDesc2" class="text-[10px] text-zinc-400 font-sans truncate">Segmenting walls</div>
+                    </div>
+                  </div>
+
+                  <div id="stepPhoto3" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <div id="stepPhotoIcon3" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">3</div>
+                      <span id="stepPhotoBadge3" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
+                    </div>
+                    <div>
+                      <div class="text-xs font-bold text-white">3. Homography Fitting</div>
+                      <div id="stepPhotoDesc3" class="text-[10px] text-zinc-400 font-sans truncate">4-point quad (P1-P4)</div>
+                    </div>
+                  </div>
+
+                  <div id="stepPhoto4" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <div id="stepPhotoIcon4" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">4</div>
+                      <span id="stepPhotoBadge4" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
+                    </div>
+                    <div>
+                      <div class="text-xs font-bold text-white">4. ScoreEngine Audit</div>
+                      <div id="stepPhotoDesc4" class="text-[10px] text-zinc-400 font-sans truncate">Synthesizing ranking</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-              <div id="stepPhoto1" class="p-2.5 rounded-2xl bg-lime-400/[0.06] border border-lime-400/50 shadow-md transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepPhotoIcon1" class="w-5 h-5 rounded-md bg-lime-400 text-black flex items-center justify-center font-bold text-[10px] shrink-0">1</div>
-                  <span id="stepPhotoBadge1" class="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-lime-400/20 text-lime-300 border border-lime-400/40 uppercase animate-pulse">Active</span>
+            <!-- Right Side: Photo Terminal Box (6 cols) -->
+            <div class="lg:col-span-6 flex flex-col h-full space-y-2">
+              <div class="rounded-2xl border border-white/10 bg-[#07090e] shadow-2xl overflow-hidden flex flex-col h-[320px]">
+                <div class="flex items-center justify-between px-3.5 py-2.5 bg-ink-950/90 border-b border-white/[0.08] select-none">
+                  <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-1.5">
+                      <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block border border-red-600/50"></span>
+                      <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block border border-amber-600/50"></span>
+                      <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block border border-emerald-600/50"></span>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-zinc-300 ml-2 flex items-center space-x-1.5">
+                      <i data-lucide="terminal" class="w-3.5 h-3.5 text-cyan-400"></i>
+                      <span>inscene-photo :: stdout</span>
+                    </span>
+                  </div>
+                  <div class="flex items-center space-x-2 font-mono">
+                    <span class="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] text-cyan-400 font-bold">
+                      <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+                      <span>LIVE</span>
+                    </span>
+                    <span id="photoLogCount" class="text-[10px] text-zinc-500">0 lines</span>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-xs font-bold text-white">1. Image Ingestion</div>
-                  <div id="stepPhotoDesc1" class="text-[10px] text-zinc-400 font-sans truncate">Validating resolution</div>
-                </div>
-              </div>
 
-              <div id="stepPhoto2" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepPhotoIcon2" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">2</div>
-                  <span id="stepPhotoBadge2" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
+                <div id="photoTerminalLogs" class="p-3.5 overflow-y-auto flex-1 font-mono text-xs leading-relaxed space-y-1 bg-[#05070a] select-text scroll-smooth terminal-scroll" style="max-height: 250px;">
+                  <div class="text-zinc-500 text-[11px] mb-2 font-mono pb-2 border-b border-white/[0.04]">
+                    <span class="text-cyan-400 font-bold">root@inscene-photo</span>:<span class="text-lime-400">~</span>$ ./bin/detect_photo_surfaces --homography
+                  </div>
+                  <div class="text-zinc-500 text-[11px] italic">Awaiting photo pipeline logs...</div>
                 </div>
-                <div>
-                  <div class="text-xs font-bold text-white">2. Contour Detection</div>
-                  <div id="stepPhotoDesc2" class="text-[10px] text-zinc-400 font-sans truncate">Segmenting walls</div>
-                </div>
-              </div>
 
-              <div id="stepPhoto3" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepPhotoIcon3" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">3</div>
-                  <span id="stepPhotoBadge3" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-white">3. Homography Fitting</div>
-                  <div id="stepPhotoDesc3" class="text-[10px] text-zinc-400 font-sans truncate">4-point quad (P1-P4)</div>
-                </div>
-              </div>
-
-              <div id="stepPhoto4" class="p-2.5 rounded-2xl bg-ink-950/40 border border-white/[0.04] opacity-50 transition-all flex flex-col justify-between space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div id="stepPhotoIcon4" class="w-5 h-5 rounded-md bg-white/5 text-zinc-500 flex items-center justify-center font-medium text-xs shrink-0">4</div>
-                  <span id="stepPhotoBadge4" class="px-2 py-0.2 rounded-full text-[9px] font-mono text-zinc-500 border border-white/[0.06] uppercase">Waiting</span>
-                </div>
-                <div>
-                  <div class="text-xs font-bold text-white">4. ScoreEngine Audit</div>
-                  <div id="stepPhotoDesc4" class="text-[10px] text-zinc-400 font-sans truncate">Synthesizing ranking</div>
+                <div class="flex items-center justify-between px-3 py-1.5 bg-ink-950/90 border-t border-white/[0.06] text-[10px] font-mono text-zinc-500">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-cyan-400">● PHOTO HOMOGRAPHY</span>
+                    <span>| 3D RANSAC</span>
+                  </div>
+                  <div class="text-zinc-400">Auto-scrolling</div>
                 </div>
               </div>
             </div>
+
           </div>
 
         </div>
@@ -1175,6 +1273,42 @@
       lucide.createIcons();
     }
 
+    function formatTerminalLogLine(line) {
+      if (!line) return "";
+      let safe = String(line)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // Timestamp coloring
+      safe = safe.replace(/^(\[\d{2}:\d{2}:\d{2}(?:\.\d+)?\])/, '<span class="text-zinc-500 font-mono">$1</span>');
+
+      // Tag styling
+      safe = safe.replace(/(\[\+\])/g, '<span class="text-lime-400 font-bold">$1</span>');
+      safe = safe.replace(/(\[\*\])/g, '<span class="text-cyan-400 font-bold">$1</span>');
+      safe = safe.replace(/(\[✓\])/g, '<span class="text-emerald-400 font-bold">$1</span>');
+      safe = safe.replace(/(\[WARN(?:ING)?\])/gi, '<span class="text-amber-400 font-bold">$1</span>');
+      safe = safe.replace(/(\[ERR(?:OR)?\])/gi, '<span class="text-red-400 font-bold">$1</span>');
+      safe = safe.replace(/(\[STAGE \d+\])/g, '<span class="text-yellow-300 font-bold">$1</span>');
+      safe = safe.replace(/(\[FRAME \d+\])/g, '<span class="text-purple-400 font-bold">$1</span>');
+      safe = safe.replace(/(\[INGESTION\]|\[DETECTION\]|\[TRACKING\]|\[OCCLUSION\]|\[SCORING\]|\[COMPLETED\])/g, '<span class="text-lime-300 font-semibold">$1</span>');
+
+      return `<div class="font-mono text-[11px] leading-tight text-zinc-300 py-0.5 border-b border-white/[0.02] hover:bg-white/[0.03] transition-colors"><span class="text-zinc-600 select-none mr-1.5">&gt;</span>${safe}</div>`;
+    }
+
+    function updateTerminalLogs(containerId, countId, logList) {
+      const container = document.getElementById(containerId);
+      const countElem = document.getElementById(countId);
+      if (!container || !logList) return;
+
+      if (countElem) {
+        countElem.textContent = `${logList.length} line${logList.length === 1 ? '' : 's'}`;
+      }
+
+      container.innerHTML = logList.map(formatTerminalLogLine).join("");
+      container.scrollTop = container.scrollHeight;
+    }
+
     async function startAnalysis() {
       if (!selectedFile) return;
       if (currentMode === "video") {
@@ -1195,6 +1329,13 @@
       document.getElementById("resultsSection").classList.add("hidden");
 
       setVideoStep(1, "Initializing video extraction...");
+
+      const initialLogs = [
+        `[${new Date().toTimeString().split(' ')[0]}] [+] Initializing neural tracking session...`,
+        `[${new Date().toTimeString().split(' ')[0]}] [*] Uploading payload: ${selectedFile.name} (${(selectedFile.size / (1024*1024)).toFixed(2)} MB)`,
+        `[${new Date().toTimeString().split(' ')[0]}] [*] Establishing live stdout polling stream...`
+      ];
+      updateTerminalLogs("videoTerminalLogs", "videoLogCount", initialLogs);
 
       const progressBar = document.getElementById("liveProgressBar");
       const percentVal = document.getElementById("livePercentVal");
@@ -1226,6 +1367,11 @@
             progressBar.style.width = pct + "%";
             percentVal.textContent = pct.toFixed(1) + "%";
             progressFraction.textContent = `${progress.current_frame || 0} / ${progress.total_frames || 0} frames`;
+
+            // Stream live backend logs to terminal
+            if (progress.logs && Array.isArray(progress.logs)) {
+              updateTerminalLogs("videoTerminalLogs", "videoLogCount", progress.logs);
+            }
 
             if (pct < 20) {
               setVideoStep(1, `Extracted ${progress.current_frame || 0} / ${progress.total_frames || 0} frames`);
@@ -1291,9 +1437,24 @@
       photoLoader.classList.remove("hidden");
       document.getElementById("resultsSection").classList.add("hidden");
 
+      let photoLogs = [
+        `[${new Date().toTimeString().split(' ')[0]}] [+] Ingesting photo: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`,
+        `[${new Date().toTimeString().split(' ')[0]}] [*] [STAGE 1] Ingesting & validating image color channels...`
+      ];
+      updateTerminalLogs("photoTerminalLogs", "photoLogCount", photoLogs);
+
       setPhotoStep(1, "Validating resolution & color space...");
-      const t1 = setTimeout(() => setPhotoStep(2, "Detecting planar contours and building walls..."), 350);
-      const t2 = setTimeout(() => setPhotoStep(3, "Fitting 4-corner perspective quadrilateral (P1 - P4)..."), 700);
+      const t1 = setTimeout(() => {
+        setPhotoStep(2, "Detecting planar contours and building walls...");
+        photoLogs.push(`[${new Date().toTimeString().split(' ')[0]}] [*] [STAGE 2] YOLOv8-World candidate quad region search...`);
+        updateTerminalLogs("photoTerminalLogs", "photoLogCount", photoLogs);
+      }, 350);
+
+      const t2 = setTimeout(() => {
+        setPhotoStep(3, "Fitting 4-corner perspective quadrilateral (P1 - P4)...");
+        photoLogs.push(`[${new Date().toTimeString().split(' ')[0]}] [*] [STAGE 3] Fitting RANSAC homography projective matrices...`);
+        updateTerminalLogs("photoTerminalLogs", "photoLogCount", photoLogs);
+      }, 700);
 
       const formData = new FormData();
       formData.append("file", selectedFile);
@@ -1307,6 +1468,10 @@
         if (!res.ok) throw new Error("Photo analysis failed.");
         const data = await res.json();
         setPhotoStep(5);
+
+        if (data.logs && Array.isArray(data.logs)) {
+          updateTerminalLogs("photoTerminalLogs", "photoLogCount", data.logs);
+        }
 
         setTimeout(() => {
           photoLoader.classList.add("hidden");

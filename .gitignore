@@ -34,6 +34,10 @@ data/uploads/*
 !data/uploads/.gitkeep
 data/.ultralytics/
 
+# Binaries
+*.exe
+data/*.exe
+
 # Temporary / Scratch files
 scratch/
 *.bak

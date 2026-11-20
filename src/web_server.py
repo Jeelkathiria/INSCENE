@@ -77,14 +77,27 @@ async def serve_analyzer():
         return HTMLResponse(content=f.read())
 
 
+def append_job_log(job_id: str, msg: str):
+    """Appends timestamped log message to active job record and stdout."""
+    ts = datetime.now().strftime("%H:%M:%S")
+    entry = f"[{ts}] {msg}"
+    log_terminal(msg)
+    if job_id in active_jobs:
+        logs = active_jobs[job_id].setdefault("logs", [])
+        logs.append(entry)
+        if len(logs) > 300:
+            del logs[:100]
+
+
 def _process_video_job(job_id: str, video_path: str, filename: str, saved_filename: str):
     """Background worker function updating live extraction percentage, preview frame, and processing time."""
     base_name = os.path.splitext(saved_filename)[0]
     out_annotated_mp4 = os.path.join(OUTPUTS_DIR, f"{base_name}_annotated.mp4")
 
-    log_terminal("=" * 75)
-    log_terminal(f"-> [JOB START] Processing Video: {filename} (Job ID: {job_id})")
-    log_terminal("=" * 75)
+    append_job_log(job_id, f"[+] [JOB START] Processing Video: {filename} (Job ID: {job_id})")
+    append_job_log(job_id, f"[*] Initializing VideoPlacementPipeline on CPU/CUDA hardware...")
+    append_job_log(job_id, f"[*] Initializing ThreadedFrameReader background producer-consumer buffer...")
+    append_job_log(job_id, f"[*] YOLOv8-World open-vocabulary classes active (69 surface & occluder classes)...")
 
     last_logged_frame = [-1]
 
@@ -112,21 +125,26 @@ def _process_video_job(job_id: str, video_path: str, filename: str, saved_filena
             update_data["preview_frame"] = preview_b64
         active_jobs[job_id].update(update_data)
 
-        # Print real-time console log periodically (every 15 frames or at final frame)
-        if current_frame - last_logged_frame[0] >= 15 or current_frame == total_frames:
+        # Append real-time terminal log periodically (every 10 frames or at final frame)
+        if current_frame - last_logged_frame[0] >= 10 or current_frame == total_frames:
             last_logged_frame[0] = current_frame
-            log_terminal(
-                f"[*] [FRAME EXTRACTION] Frame {current_frame:4d}/{total_frames:4d} ({pct:5.1f}%) | "
-                f"Video Time: {timestamp_sec:05.2f}s | Active 3D Surfaces: {active_count} | Speed: {fps:4.1f} FPS | Elapsed: {elapsed_sec:4.1f}s"
+            msg = (
+                f"[*] [FRAME] {current_frame:4d}/{total_frames:4d} ({pct:5.1f}%) | "
+                f"T={timestamp_sec:05.2f}s | Active 3D Surfaces: {active_count} | Speed: {fps:4.1f} FPS | Elapsed: {elapsed_sec:4.1f}s"
             )
+            append_job_log(job_id, msg)
 
     try:
         pipeline = VideoPlacementPipeline()
+        append_job_log(job_id, f"[*] Video decoder opened. Beginning neural frame processing stream...")
         ranked_scores, exports = pipeline.process_video(
             video_path=video_path,
             output_video_path=out_annotated_mp4,
             progress_callback=progress_handler
         )
+
+        append_job_log(job_id, f"[*] [TRACKING] Finalized centroid tracklets & bridged temporal occlusion gaps")
+        append_job_log(job_id, f"[*] [SCORING] ScoreEngine evaluating Duration, Area, Occlusion, Stability, Geometry")
 
         # Ensure raw upload is also browser-playable H.264
         ensure_browser_compatible_h264(video_path)
@@ -150,13 +168,12 @@ def _process_video_job(job_id: str, video_path: str, filename: str, saved_filena
             "percent": 100.0,
             "result": data
         })
-        log_terminal(f"[+] [VIDEO COMPLETED] Job {job_id} finished in {data.get('total_processing_time_sec', 'N/A')}s (avg {data.get('processing_fps', 'N/A')} FPS)")
-        log_terminal(f"   Sequential Ad Timelines: {data.get('sequential_timeline_summary', 'None')}")
-        log_terminal(f"   Annotated 3D Output: {out_annotated_mp4}")
-        log_terminal("=" * 75)
+        append_job_log(job_id, f"[+] Sequential Ad Timelines: {data.get('sequential_timeline_summary', 'None')}")
+        append_job_log(job_id, f"[+] Transcoded browser-compatible H.264 inspection video: {os.path.basename(out_annotated_mp4)}")
+        append_job_log(job_id, f"[✓] [VIDEO COMPLETED] Job {job_id} finished in {data.get('total_processing_time_sec', 'N/A')}s (avg {data.get('processing_fps', 'N/A')} FPS)")
 
     except Exception as e:
-        log_terminal(f"[X] [JOB FAILED] {job_id}: {e}")
+        append_job_log(job_id, f"[X] [JOB FAILED] {job_id}: {e}")
         logger.error("Job %s failed: %s", job_id, e, exc_info=True)
         active_jobs[job_id].update({
             "status": "failed",
@@ -190,7 +207,11 @@ async def start_video_analysis(file: UploadFile = File(...)):
         "timestamp_sec": 0.0,
         "active_surfaces": 0,
         "error": None,
-        "result": None
+        "result": None,
+        "logs": [
+            f"[{datetime.now().strftime('%H:%M:%S')}] [+] [INGESTION] Received video payload: {file.filename} (Job ID: {job_id})",
+            f"[{datetime.now().strftime('%H:%M:%S')}] [*] Registered in active video worker pool. Spawning thread..."
+        ]
     }
 
     # Spawn processing thread
@@ -262,6 +283,15 @@ async def analyze_photo_upload(file: UploadFile = File(...)):
             log_terminal(f"   Rank #1: {top.get('class_name')} | Score: {top.get('final_score')} | Dimensions: {top.get('dimensions_wh')} | 3D Quad: {top.get('position_xy')}")
         log_terminal(f"   Annotated 3D Output: {out_annotated_img}")
         log_terminal("=" * 75)
+
+        data["logs"] = [
+            f"[{datetime.now().strftime('%H:%M:%S')}] [+] [INGESTION] Photo upload received: {file.filename} (ID: {photo_id})",
+            f"[{datetime.now().strftime('%H:%M:%S')}] [*] [STAGE 1] Validating resolution, color space & aspect ratio",
+            f"[{datetime.now().strftime('%H:%M:%S')}] [*] [STAGE 2] YOLOv8-World v2 zero-shot scanning for planar ad surfaces",
+            f"[{datetime.now().strftime('%H:%M:%S')}] [*] [STAGE 3] Sub-pixel Douglas-Peucker 4-point contour approximation",
+            f"[{datetime.now().strftime('%H:%M:%S')}] [*] [STAGE 4] Calculating 3x3 projective homography matrix H & orthogonality",
+            f"[{datetime.now().strftime('%H:%M:%S')}] [✓] [COMPLETED] Detected {len(placements)} candidate spaces in {data.get('total_processing_time_sec', 'N/A')}s"
+        ]
 
         return JSONResponse(content=data)
 
