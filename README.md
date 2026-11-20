@@ -227,8 +227,8 @@ flowchart TD
 
 #### Linux / macOS:
 ```bash
-git clone <repository_url>
-cd POJECT
+git clone https://github.com/Jeelkathiria/INSCENE.git
+cd INSCENE
 
 python3 -m venv venv
 source venv/bin/activate
@@ -236,8 +236,8 @@ source venv/bin/activate
 
 #### Windows (PowerShell):
 ```powershell
-git clone <repository_url>
-cd POJECT
+git clone https://github.com/Jeelkathiria/INSCENE.git
+cd INSCENE
 
 python -m venv venv
 .\venv\Scripts\Activate.ps1
