@@ -157,14 +157,14 @@ class GeometryConfig:
 @dataclass
 class TrackerConfig:
     """Tracking and tracklet management settings."""
-    max_distance_threshold: float = 140.0 # Max pixel distance for centroid matching
-    max_lost_frames: int = 60            # Keep track alive for up to 60 frames (~2.0s) through dropouts
-    max_coast_frames: int = 55           # Smoothly interpolate across missed frames so the box never flickers or disappears
-    max_continuous_gap_sec: float = 2.0  # Split tracklet only if an unobserved gap exceeds 2.0s
+    max_distance_threshold: float = 90.0  # Tightened pixel threshold to prevent jumping across adjacent signs
+    max_lost_frames: int = 15             # Keep track alive for up to 15 frames (~0.5s) through dropouts
+    max_coast_frames: int = 10            # Smoothly bridge brief dropouts without letting boxes float through space
+    max_continuous_gap_sec: float = 1.5   # Split tracklet if an unobserved gap exceeds 1.5s
     min_tracklet_duration_sec: float = 0.5  # Filter out very short flashes (< 0.5 sec)
     target_optimal_duration_sec: float = 5.0 # Max score achieved around this duration
-    max_reid_distance: float = 80.0      # Spatial radius (px) to re-identify and revive recently lost surfaces
-    max_reid_frames: int = 120           # Memory window (~4.0s) to revive a temporarily lost tracklet
+    max_reid_distance: float = 40.0       # Spatial radius (px) to re-identify and revive recently lost surfaces
+    max_reid_frames: int = 45             # Memory window (~1.5s) to revive a temporarily lost tracklet
 
 
 @dataclass

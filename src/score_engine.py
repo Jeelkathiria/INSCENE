@@ -27,9 +27,9 @@ def format_seconds_to_timeline(start_s: float, end_s: float) -> str:
 def are_cospatial_tracklets(
     t1: Tracklet,
     t2: Tracklet,
-    max_centroid_dist: float = 75.0,
-    min_iou: float = 0.30,
-    max_gap_sec: float = 6.0
+    max_centroid_dist: float = 35.0,
+    min_iou: float = 0.45,
+    max_gap_sec: float = 2.0
 ) -> bool:
     """
     Determines if two candidate tracklets correspond to the exact same physical billboard
@@ -86,10 +86,10 @@ def are_cospatial_tracklets(
     time_gap = max(0.0, t_later.start_time - t_earlier.end_time)
 
     # Check match condition:
-    # High IoU OR close centroid with consistent area
-    is_spatial_match = (iou >= min_iou) or (centroid_dist <= max_centroid_dist and area_ratio >= 0.45)
+    # Requires high bounding box overlap OR close centroid with highly consistent area
+    is_spatial_match = (iou >= min_iou) or (centroid_dist <= max_centroid_dist and area_ratio >= 0.65)
 
-    if is_spatial_match and (time_gap <= max_gap_sec or centroid_dist <= 45.0):
+    if is_spatial_match and time_gap <= max_gap_sec and centroid_dist <= max_centroid_dist:
         return True
 
     return False
@@ -286,6 +286,7 @@ class TrackletScore:
     # Planar quad coordinates for client-side viewport isolation
     quad_points: List[List[float]] = field(default_factory=list)
     quad_timeline: List[Dict[str, Any]] = field(default_factory=list)
+    is_static_space: bool = True
 
     def __post_init__(self):
         if not self.timeline_str:
@@ -309,6 +310,7 @@ class TrackletScore:
             "position_xy": f"Track #{self.track_id}",
             "timeline_slot_str": self.timeline_str,
             "is_sequential_slot": self.is_sequential_slot,
+            "is_static_space": self.is_static_space,
             "final_score": round(self.final_score, 1),
             "score_duration": round(self.score_duration, 1),
             "score_area": round(self.score_area, 1),
@@ -464,6 +466,9 @@ class ScoreEngine:
                     "q": [[round(float(pt[0]), 1), round(float(pt[1]), 1)] for pt in snap.quad]
                 })
 
+        is_hero_placement = any(k in track.class_name.lower() for k in ["hero", "mug", "cup", "can", "bottle", "prop", "car", "vehicle"])
+        is_static_space = not is_hero_placement
+
         return TrackletScore(
             track_id=track.track_id,
             class_name=track.class_name,
@@ -484,7 +489,8 @@ class ScoreEngine:
             is_recommended=is_recommended,
             audit_notes=notes,
             quad_points=rep_quad,
-            quad_timeline=quad_timeline
+            quad_timeline=quad_timeline,
+            is_static_space=is_static_space
         )
 
     def evaluate_and_rank_all(self, tracklets: List[Tracklet]) -> List[TrackletScore]:
