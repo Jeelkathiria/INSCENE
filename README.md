@@ -8,6 +8,7 @@
 [![PyTest](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)](tests/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](#-production-deployment-guide)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Jeelkathiria/INSCENE)
 
 ---
 
