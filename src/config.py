@@ -89,7 +89,24 @@ class DetectorConfig:
         "overhead bridge girder",
         "bridge girder",
         "bridge wall",
-        "whiteboard"
+        "whiteboard",
+        # Hero handheld props & beverage containers for high-attention focal product placement
+        "ceramic mug",
+        "coffee mug",
+        "drinking mug",
+        "drinking cup",
+        "coffee cup",
+        "tea mug",
+        "mug",
+        "cup",
+        "beverage can",
+        "drink can",
+        "soda can",
+        "water bottle",
+        "beer bottle",
+        "bottle",
+        "drinking glass",
+        "tumbler"
     ])
 
     # Open-vocabulary prompts for foreground occluders
@@ -120,7 +137,7 @@ class DetectorConfig:
 
     # Fallback standard COCO mappings when using base YOLO models
     coco_candidate_classes: List[str] = field(default_factory=lambda: [
-        "tv", "laptop", "refrigerator", "book"
+        "tv", "laptop", "refrigerator", "book", "cup", "bottle", "wine glass"
     ])
     coco_occluder_classes: List[str] = field(default_factory=lambda: [
         "person", "car", "motorcycle", "bus", "truck", "traffic light", "stop sign", "chair"

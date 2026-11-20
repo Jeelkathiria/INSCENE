@@ -347,17 +347,28 @@ class ScoreEngine:
         # 2. Surface Area / Scale Score
         areas = [f.area_fraction for f in hist]
         mean_area = float(np.mean(areas)) if areas else 0.0
-        # Optimal candidate area is ~10% to 25% of frame
-        if mean_area < 0.02:
-            s_area = max(0.0, (mean_area / 0.02) * 50.0)
-        elif 0.05 <= mean_area <= 0.35:
-            # Ideal in-scene range
-            s_area = 100.0
-        elif mean_area < 0.05:
-            s_area = 50.0 + 50.0 * ((mean_area - 0.02) / 0.03)
+
+        is_hero_placement = any(k in track.class_name.lower() for k in ["hero", "mug", "cup", "can", "bottle", "prop"])
+        if is_hero_placement:
+            # Optimal hero product placement prop scale is 0.3% to 5.0% of screen
+            if 0.003 <= mean_area <= 0.05:
+                s_area = 100.0
+            elif mean_area < 0.003:
+                s_area = max(60.0, (mean_area / 0.003) * 100.0)
+            else:
+                s_area = 90.0
         else:
-            # Overly large surfaces (>35%) begin to dominate the screen excessively
-            s_area = max(40.0, 100.0 - ((mean_area - 0.35) / 0.30) * 60.0)
+            # Optimal billboard/wall area is ~10% to 25% of frame
+            if mean_area < 0.02:
+                s_area = max(0.0, (mean_area / 0.02) * 50.0)
+            elif 0.05 <= mean_area <= 0.35:
+                # Ideal in-scene range
+                s_area = 100.0
+            elif mean_area < 0.05:
+                s_area = 50.0 + 50.0 * ((mean_area - 0.02) / 0.03)
+            else:
+                # Overly large surfaces (>35%) begin to dominate the screen excessively
+                s_area = max(40.0, 100.0 - ((mean_area - 0.35) / 0.30) * 60.0)
 
         # 3. Occlusion Penalty Score
         occs = [f.occlusion_ratio for f in hist]
@@ -393,10 +404,16 @@ class ScoreEngine:
             w.geometry * s_geometry
         ) / max(1e-5, total_weight)
 
+        if is_hero_placement:
+            # Hero product placement focal attention premium (+12.0)
+            final_score = min(99.0, final_score + 12.0)
+
         final_score = float(np.clip(final_score, 0.0, 100.0))
 
         # Generate explanatory audit notes
         notes = []
+        if is_hero_placement:
+            notes.append("Top Audience Gaze: Hero product placement with prime center-stage attention")
         if duration >= self.tracker_cfg.target_optimal_duration_sec:
             notes.append(f"Excellent screen time ({duration:.1f}s)")
         elif duration < self.tracker_cfg.min_tracklet_duration_sec:

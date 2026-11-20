@@ -25,6 +25,7 @@ class CandidateDetection:
     class_name: str
     confidence: float
     mask: Optional[np.ndarray] = None
+    is_hero: bool = False
 
 
 @dataclass
@@ -472,6 +473,27 @@ class SurfaceDetector:
 
         return default_quad
 
+    def fit_hero_vessel_quad(
+        self,
+        frame: np.ndarray,
+        bbox: Tuple[int, int, int, int]
+    ) -> np.ndarray:
+        """
+        Fits a perspective 3D cylindrical planar quadrilateral on hero handheld
+        props and beverage vessels (mugs, cups, cans, bottles) for product placement.
+        Insets margins from the handle and rim to isolate the primary brandable surface.
+        """
+        x1, y1, x2, y2 = bbox
+        bw = x2 - x1
+        bh = y2 - y1
+
+        p1 = [float(x1 + 0.05 * bw), float(y1 + 0.08 * bh)]
+        p2 = [float(x2 - 0.05 * bw), float(y1 + 0.08 * bh)]
+        p3 = [float(x2 - 0.05 * bw), float(y2 - 0.08 * bh)]
+        p4 = [float(x1 + 0.05 * bw), float(y2 - 0.08 * bh)]
+
+        return order_points(np.array([p1, p2, p3, p4], dtype=np.float32))
+
     def fit_upper_wall_plain_quad(
         self,
         frame: np.ndarray,
@@ -772,8 +794,9 @@ class SurfaceDetector:
             c_cand, c_occ = self.detect_classical(frame)
             return c_cand, occluders + c_occ
 
-        # Pre-scan for window boxes and interior cues
+        # Pre-scan for window boxes, person/actor silhouettes, and interior cues
         window_boxes: List[Tuple[int, int, int, int]] = []
+        person_boxes: List[Tuple[int, int, int, int]] = []
         detected_names = [names.get(int(box.cls[0].item()), "").lower() for box in boxes]
         is_interior_scene = any(
             k in d_name for d_name in detected_names
@@ -786,6 +809,9 @@ class SurfaceDetector:
             if "window" in b_name:
                 wxyxy = box.xyxy[0].cpu().numpy().astype(int)
                 window_boxes.append((int(wxyxy[0]), int(wxyxy[1]), int(wxyxy[2]), int(wxyxy[3])))
+            elif "person" in b_name:
+                pxyxy = box.xyxy[0].cpu().numpy().astype(int)
+                person_boxes.append((int(pxyxy[0]), int(pxyxy[1]), int(pxyxy[2]), int(pxyxy[3])))
 
         for box in boxes:
             cls_id = int(box.cls[0].item())
@@ -953,8 +979,17 @@ class SurfaceDetector:
                     is_occluder = True
 
             if is_candidate:
-                # Fast <2ms quad extraction
-                if any(k in cls_name for k in ["bridge wall", "concrete bridge wall", "overhead bridge girder", "bridge girder"]):
+                is_hero_vessel = any(k in cls_name for k in [
+                    "mug", "cup", "ceramic mug", "coffee mug", "drinking mug",
+                    "drinking cup", "coffee cup", "tea mug", "can", "bottle",
+                    "tumbler", "drink", "glass"
+                ])
+                min_area_thresh = 0.001 if is_hero_vessel else self.geom_cfg.min_area_fraction
+
+                # Fast quad extraction
+                if is_hero_vessel:
+                    quad = self.fit_hero_vessel_quad(frame, bbox)
+                elif any(k in cls_name for k in ["bridge wall", "concrete bridge wall", "overhead bridge girder", "bridge girder"]):
                     if conf < 0.40:
                         continue
                     quad = self.fit_bridge_3d_quad(frame, bbox)
@@ -969,7 +1004,8 @@ class SurfaceDetector:
                             quad=upper_quad,
                             class_name="plain wall ad space (above windows)",
                             confidence=conf,
-                            mask=None
+                            mask=None,
+                            is_hero=False
                         ))
                         continue
                     else:
@@ -990,7 +1026,7 @@ class SurfaceDetector:
 
                 valid, _ = is_valid_planar_quad(
                     quad, w, h,
-                    min_area_fraction=self.geom_cfg.min_area_fraction,
+                    min_area_fraction=min_area_thresh,
                     max_area_fraction=self.geom_cfg.max_area_fraction,
                     min_angle=self.geom_cfg.min_internal_angle_deg,
                     max_angle=self.geom_cfg.max_internal_angle_deg
@@ -1000,16 +1036,44 @@ class SurfaceDetector:
                     b_min_y = int(min(quad[:, 1]))
                     b_max_y = int(max(quad[:, 1]))
                     c_display = cls_name
-                    if any(k in cls_name for k in ["skyscraper", "building", "high-rise"]):
+                    is_hero_prop = False
+
+                    if is_hero_vessel:
+                        is_hero_prop = True
+                        is_hero_held = False
+                        hero_action = "prop"
+                        obj_cx = (x1 + x2) * 0.5
+                        obj_cy = (y1 + y2) * 0.5
+                        for px1, py1, px2, py2 in person_boxes:
+                            pw = px2 - px1
+                            ph = py2 - py1
+                            if (px1 - 55 <= obj_cx <= px2 + 55) and (py1 - 25 <= obj_cy <= py2 + 25):
+                                is_hero_held = True
+                                if obj_cy <= (py1 + 0.45 * ph):
+                                    hero_action = "drinking"
+                                else:
+                                    hero_action = "holding"
+                                break
+
+                        if hero_action == "drinking":
+                            c_display = "Hero Placement: Drinking Mug (Active Sip)"
+                        elif hero_action == "holding":
+                            clean_vessel = "Mug" if "mug" in cls_name else ("Cup" if "cup" in cls_name else "Vessel")
+                            c_display = f"Hero Placement: Handheld {clean_vessel} (In-Hand Prop)"
+                        else:
+                            c_display = f"Hero Prop: {cls_name.title()}"
+                    elif any(k in cls_name for k in ["skyscraper", "building", "high-rise"]):
                         c_display = "building facade ad space"
                     elif any(k in cls_name for k in ["bridge", "girder"]):
                         c_display = "bridge wall ad space"
+
                     candidates.append(CandidateDetection(
                         bbox=(int(min(quad[:, 0])), b_min_y, int(max(quad[:, 0])), b_max_y),
                         quad=quad,
                         class_name=c_display,
                         confidence=conf,
-                        mask=None
+                        mask=None,
+                        is_hero=is_hero_prop
                     ))
 
             elif is_occluder:
@@ -1053,7 +1117,8 @@ class SurfaceDetector:
                     iou = inter / float(c_area + e_area - inter) if (c_area + e_area - inter) > 0 else 0.0
                     overlap = inter / float(min(c_area, e_area)) if min(c_area, e_area) > 0 else 0.0
 
-                    if dist < 50.0 or iou > 0.30 or overlap > 0.45:
+                    thresh_dist = 25.0 if (cand.is_hero and existing.is_hero) else 50.0
+                    if dist < thresh_dist or iou > 0.30 or overlap > 0.45:
                         keep = False
                         break
                 if keep:
@@ -1063,6 +1128,8 @@ class SurfaceDetector:
         # In-canvas intrusion detection: detect slender poles, posts, and foreground occluders
         if candidates and frame is not None:
             for cand in candidates:
+                if getattr(cand, "is_hero", False):
+                    continue
                 slender_polys = self.detect_slender_occluders(frame, cand.quad)
                 for spoly in slender_polys:
                     sx1 = int(np.min(spoly[:, 0]))

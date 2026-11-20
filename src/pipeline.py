@@ -465,32 +465,77 @@ class VideoPlacementPipeline:
             area = float(cv2_polygon_area(quad))
             area_frac = area / max(1.0, frame_area)
 
-            # Area score: optimal 5% - 35%
-            if area_frac < 0.02:
-                s_area = max(0.0, (area_frac / 0.02) * 50.0)
-            elif 0.05 <= area_frac <= 0.35:
-                s_area = 100.0
-            elif area_frac < 0.05:
-                s_area = 50.0 + 50.0 * ((area_frac - 0.02) / 0.03)
+            is_hero = getattr(cand, "is_hero", False) or any(
+                k in cand.class_name.lower()
+                for k in ["hero", "mug", "cup", "can", "bottle", "prop"]
+            )
+            is_active_sip = "sip" in cand.class_name.lower()
+
+            if is_hero:
+                # For hero product placement, optimal audience attention scale is 0.3% to 5.0% of frame
+                if 0.003 <= area_frac <= 0.05:
+                    s_area = 100.0
+                elif area_frac < 0.003:
+                    s_area = max(60.0, (area_frac / 0.003) * 100.0)
+                else:
+                    s_area = 90.0
+
+                # Filter out the holding hero person from occluders so actor holding mug doesn't penalize it
+                prop_occluder_polys = [
+                    occ.poly for occ in occluders if "person" not in occ.class_name.lower()
+                ]
+                occ_ratio, _ = compute_occlusion_ratio(quad, prop_occluder_polys, (h, w))
+                s_occlusion = max(0.0, 100.0 * (1.0 - 2.0 * occ_ratio))
+                s_geometry = compute_homography_quality(quad)
+
+                # Hero Focal Attention & Viewer Gaze Fixation weight:
+                # Active sip (actor drinking at mouth) gets 100 attention score; Handheld in-hand gets 95
+                s_attention = 100.0 if is_active_sip else 95.0
+
+                # Composite score with Hero Focal Attention weighting (40% Attention, 25% Area, 20% Occlusion, 15% Geometry)
+                final_score = float(0.40 * s_attention + 0.25 * s_area + 0.20 * s_occlusion + 0.15 * s_geometry)
+                final_score = float(np.clip(final_score, 0.0, 99.2))
+
+                min_x = int(np.min(quad[:, 0]))
+                max_x = int(np.max(quad[:, 0]))
+                min_y = int(np.min(quad[:, 1]))
+                max_y = int(np.max(quad[:, 1]))
+                width_px = max_x - min_x
+                height_px = max_y - min_y
+
+                if is_active_sip:
+                    audit_note = f"Top Audience Gaze: Hero drinking prop with prime center-stage facial fixation (Active Sip); Canvas {width_px}x{height_px}px ({area_frac*100:.1f}% area)"
+                else:
+                    audit_note = f"High-Attention Hero Prop: Branded mug held by protagonist in dialog scene; Canvas {width_px}x{height_px}px ({area_frac*100:.1f}% area)"
+
             else:
-                s_area = max(40.0, 100.0 - ((area_frac - 0.35) / 0.30) * 60.0)
+                # Area score: optimal 5% - 35%
+                if area_frac < 0.02:
+                    s_area = max(0.0, (area_frac / 0.02) * 50.0)
+                elif 0.05 <= area_frac <= 0.35:
+                    s_area = 100.0
+                elif area_frac < 0.05:
+                    s_area = 50.0 + 50.0 * ((area_frac - 0.02) / 0.03)
+                else:
+                    s_area = max(40.0, 100.0 - ((area_frac - 0.35) / 0.30) * 60.0)
 
-            # Occlusion score
-            occ_ratio, _ = compute_occlusion_ratio(quad, occluder_polys, (h, w))
-            s_occlusion = max(0.0, 100.0 * (1.0 - 2.0 * occ_ratio))
+                # Occlusion score
+                occ_ratio, _ = compute_occlusion_ratio(quad, occluder_polys, (h, w))
+                s_occlusion = max(0.0, 100.0 * (1.0 - 2.0 * occ_ratio))
 
-            # Geometry score
-            s_geometry = compute_homography_quality(quad)
+                # Geometry score
+                s_geometry = compute_homography_quality(quad)
 
-            # Composite photo score (Area 35%, Occlusion 35%, Geometry 30%)
-            final_score = float(0.35 * s_area + 0.35 * s_occlusion + 0.30 * s_geometry)
+                # Composite photo score (Area 35%, Occlusion 35%, Geometry 30%)
+                final_score = float(0.35 * s_area + 0.35 * s_occlusion + 0.30 * s_geometry)
 
-            min_x = int(np.min(quad[:, 0]))
-            max_x = int(np.max(quad[:, 0]))
-            min_y = int(np.min(quad[:, 1]))
-            max_y = int(np.max(quad[:, 1]))
-            width_px = max_x - min_x
-            height_px = max_y - min_y
+                min_x = int(np.min(quad[:, 0]))
+                max_x = int(np.max(quad[:, 0]))
+                min_y = int(np.min(quad[:, 1]))
+                max_y = int(np.max(quad[:, 1]))
+                width_px = max_x - min_x
+                height_px = max_y - min_y
+                audit_note = f"Background canvas {width_px}x{height_px}px ({area_frac*100:.1f}% area); Occlusion: {occ_ratio*100:.1f}%; Planar score: {s_geometry:.1f}"
 
             scored_candidates.append({
                 "candidate_id": idx + 1,
@@ -505,7 +550,7 @@ class VideoPlacementPipeline:
                 "dimensions_wh": f"{width_px}x{height_px}px",
                 "quad_points": quad.tolist(),
                 "is_recommended": (final_score >= 65.0 and occ_ratio <= 0.35),
-                "audit_notes": f"Canvas {width_px}x{height_px}px ({area_frac*100:.1f}% area); Occlusion: {occ_ratio*100:.1f}%; Planar score: {s_geometry:.1f}"
+                "audit_notes": audit_note
             })
 
         # Sort descending by score

@@ -1636,8 +1636,10 @@
       placements.forEach((p, idx) => {
         const item = document.createElement("div");
         const isOptimal = idx === 0 || p.rank === 1;
+        const isHero = p.class_name && p.class_name.toLowerCase().includes("hero");
+        const isSip = p.class_name && p.class_name.toLowerCase().includes("sip");
         item.id = `candidate-card-${p.rank}`;
-        item.className = `p-2.5 rounded-xl bg-ink-950/70 border ${isOptimal ? 'border-lime-400/50 shadow-sm' : 'border-white/[0.06]'} hover:border-lime-400/80 hover:bg-white/[0.02] transition-all cursor-pointer flex flex-col space-y-1 group relative overflow-hidden`;
+        item.className = `p-2.5 rounded-xl bg-ink-950/70 border ${isOptimal ? 'border-lime-400/50 shadow-sm' : (isHero ? 'border-amber-400/40' : 'border-white/[0.06]')} hover:border-lime-400/80 hover:bg-white/[0.02] transition-all cursor-pointer flex flex-col space-y-1 group relative overflow-hidden`;
 
         item.onclick = () => {
           // When any ranked placement is clicked, isolate it:
@@ -1648,17 +1650,21 @@
         };
 
         const timelineStr = p.start_time_sec !== undefined ? `${formatTimeline(p.start_time_sec, p.end_time_sec)} (${p.duration_sec}s)` : (p.position_xy || "3D Planar Quad");
+        const heroBadge = isHero ? `<span class="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold ${isSip ? 'bg-amber-400/25 text-amber-200 border border-amber-400/50 animate-pulse' : 'bg-lime-400/20 text-lime-300 border border-lime-400/40'} uppercase tracking-wide">${isSip ? '☕ HERO SIP' : '★ HERO PROP'}</span>` : '';
 
         item.innerHTML = `
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-white flex items-center space-x-1.5">
-              <span class="w-4 h-4 rounded ${isOptimal ? 'bg-lime-400 text-black font-extrabold' : 'bg-white/10 text-white font-medium'} font-mono flex items-center justify-center text-[9px]">#${p.rank}</span>
-              <span class="uppercase tracking-wider font-display font-bold text-[11px]">${p.class_name}</span>
+            <span class="text-xs font-bold text-white flex items-center space-x-1.5 truncate max-w-[210px]">
+              <span class="w-4 h-4 rounded ${isOptimal ? 'bg-lime-400 text-black font-extrabold' : 'bg-white/10 text-white font-medium'} font-mono flex items-center justify-center text-[9px] shrink-0">#${p.rank}</span>
+              <span class="uppercase tracking-wider font-display font-bold text-[11px] truncate">${p.class_name}</span>
             </span>
-            <span class="text-[10px] font-mono font-bold text-lime-300 bg-lime-400/10 px-2 py-0.2 rounded-full border border-lime-400/30 flex items-center space-x-1">
-              <span>★</span>
-              <span>${p.final_score}</span>
-            </span>
+            <div class="flex items-center space-x-1.5 shrink-0">
+              ${heroBadge}
+              <span class="text-[10px] font-mono font-bold text-lime-300 bg-lime-400/10 px-2 py-0.2 rounded-full border border-lime-400/30 flex items-center space-x-1">
+                <span>★</span>
+                <span>${p.final_score}</span>
+              </span>
+            </div>
           </div>
           <div class="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-0.5 border-t border-white/[0.04]">
             <span class="text-zinc-300 truncate max-w-[130px]">${timelineStr}</span>
